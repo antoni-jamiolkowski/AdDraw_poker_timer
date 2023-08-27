@@ -12,9 +12,11 @@ from typing import Sequence
 
 from PyQt5 import QtCore
 from PyQt5.QtCore import QTimer
-from PyQt5.QtGui import QFont
-from PyQt5.QtWidgets import (QAction, QApplication, QGridLayout, QLabel,
-                             QMainWindow, QPushButton, QSizePolicy, QWidget)
+from PyQt5.QtGui import QPalette,QPixmap
+from PyQt5.QtWidgets import QApplication, QGridLayout, QMainWindow, QWidget, QStyle
+
+from utils import (MyFonts, MyLabel, MyPushButton, WindowGeometry,
+                   setupQFontDataBase)
 
 '''
   Config:
@@ -25,24 +27,12 @@ from PyQt5.QtWidgets import (QAction, QApplication, QGridLayout, QLabel,
   - Heads Up Small Blind step
   - Heads Up Level Time period
 '''
-# FONT
-font_timer = QFont()
-font_timer.setPointSize(256)
-font_timer.setBold(True)
-font_timer.setWeight(75)
-
-font_blinds = QFont()
-font_blinds.setPointSize(200)
-font_blinds.setBold(True)
-font_blinds.setWeight(75)
-
-font_pb = QFont()
-font_pb.setPointSize(64)
-font_pb.setBold(True)
-
 
 class PokerTimerWindow(QMainWindow):
-  def __init__(self, level_period_m=12, small_blind_step=100):
+  def __init__(self,
+               geometry : WindowGeometry = WindowGeometry.FHD,
+               level_period_m : int = 12,
+               small_blind_step : int = 100):
     super().__init__()
     # POKER
     self.level_period = [level_period_m, 0]
@@ -51,132 +41,103 @@ class PokerTimerWindow(QMainWindow):
     self.l = 1
     self.sb = small_blind_step
     self.sec_cnt = 0
-    self.time_step_ms = 100
+    self.time_step_ms = 10
+    # Setup the Window
+    self.setup_window(geometry)
 
+  def setup_window(self,
+                   geometry : WindowGeometry = WindowGeometry.FHD,
+                   bg_colour: str = "gray"):
     # QT
     self.setObjectName("MainWindow")
-    self.resize(1920, 1080)
+    self.resize(geometry)
+    from pathlib import Path
+    img = Path("dumb.jpg")
+    self.setStyleSheet("#MainWindow { "
+                       f" border-image: url({img.absolute()}) 0 0 0 0 stretch stretch;"
+                       "}")
     self.gridLayout = QGridLayout(self)
     self.gridLayout.setObjectName("gridLayout")
-
+    # QFontDataBase
+    self.qfontdb = setupQFontDataBase()
     # QTWidgets
-
-    # Timer Label
-    self.timer_label = QLabel(self)
-    self.timer_label.setSizeIncrement(QtCore.QSize(5, 5))
-    self.timer_label.setFont(font_timer)
-    self.timer_label.setLayoutDirection(QtCore.Qt.LeftToRight)
-    self.timer_label.setAutoFillBackground(True)
-    self.timer_label.setScaledContents(True)
-    self.timer_label.setAlignment(QtCore.Qt.AlignCenter)
-    self.timer_label.setObjectName("Timer")
-
-    # Blinds Label
-    self.blinds_label = QLabel(self)
-    self.blinds_label.setFont(font_blinds)
-    self.blinds_label.setAutoFillBackground(True)
-    self.blinds_label.setLineWidth(2)
-    self.blinds_label.setScaledContents(True)
-    self.blinds_label.setAlignment(QtCore.Qt.AlignCenter)
-    self.blinds_label.setObjectName("blinds_label")
-
-    # PUSH BUTTONS
-    self.pb_prev_level = QPushButton(self)
-
-    ## PB SIZE POLICY
-    sizePolicy = QSizePolicy(QSizePolicy.Preferred, QSizePolicy.Preferred)
-    sizePolicy.setHorizontalStretch(0)
-    sizePolicy.setVerticalStretch(0)
-
-    ## PB PREVIOUS LEVEL
-    sizePolicy.setHeightForWidth(self.pb_prev_level.sizePolicy().hasHeightForWidth())
-    self.pb_prev_level.setSizePolicy(sizePolicy)
-    self.pb_prev_level.setFont(font_pb)
-    self.pb_prev_level.setObjectName("pb_prev_level")
-    ## PB NEXT LEVEL
-    self.pb_next_lvl = QPushButton(self)
-    sizePolicy.setHeightForWidth(self.pb_next_lvl.sizePolicy().hasHeightForWidth())
-    self.pb_next_lvl.setSizePolicy(sizePolicy)
-    self.pb_next_lvl.setFont(font_pb)
-    self.pb_next_lvl.setLayoutDirection(QtCore.Qt.LeftToRight)
-    self.pb_next_lvl.setObjectName("pb_next_lvl")
-    ## PB HEADSUP
-    self.pb_headsup = QPushButton(self)
-    sizePolicy.setHeightForWidth(self.pb_headsup.sizePolicy().hasHeightForWidth())
-    self.pb_headsup.setSizePolicy(sizePolicy)
-    self.pb_headsup.setFont(font_pb)
-    self.pb_headsup.setObjectName("pb_headsup")
-
-
-
-    # Actions
-    self.actionPrevLevel = QAction(self)
-    self.actionPrevLevel.setObjectName("actionPrevLevel")
-    self.actionNextLevel = QAction(self)
-    self.actionNextLevel.setObjectName("actionNextLevel")
-    self.actionHeadsUp = QAction(self)
-    self.actionHeadsUp.setObjectName("actionHeadsUp")
-
+    ## Timer
+    timer = QTimer(self.gridLayout)
+    ## Labels
+    self.timer_label = MyLabel("Timer", MyFonts.Timer)
+    self.blinds_label = MyLabel("Blinds", MyFonts.Blinds)
+    ## PushButtons
+    self.pb_prev_level = MyPushButton("prev_lvl_pb")
+    self.pb_next_lvl = MyPushButton("next_lvl_pb")
+    self.pb_headsup = MyPushButton("headsup_pb")
+    self.pb_reset = MyPushButton("reset_pb")
 
     # Add Widgets to Layout
     self.gridLayout.addWidget(self.timer_label, 0, 0, 1, 2)
     self.gridLayout.addWidget(self.blinds_label, 1, 0, 1, 2)
     self.gridLayout.addWidget(self.pb_prev_level, 2, 0, 1, 1)
     self.gridLayout.addWidget(self.pb_next_lvl, 2, 1, 1, 1)
-    self.gridLayout.addWidget(self.pb_headsup, 3, 0, 1, 2)
+    self.gridLayout.addWidget(self.pb_reset, 3, 0, 1, 1)
+    self.gridLayout.addWidget(self.pb_headsup, 3, 1, 1, 1)
+
+    self.retranslateUi() # change labels
 
     # Setup the Central Widget
     widget = QWidget()
     widget.setLayout(self.gridLayout)
     self.setCentralWidget(widget)
 
-    # retranslate UI
-    self.retranslateUi()
-
-
-
     QtCore.QMetaObject.connectSlotsByName(self)
 
-    # TIMER EVENT
-    timer = QTimer(self.gridLayout)
-
-    # Connect actions to widgets
+    # Connect widgets to actions
     self.pb_next_lvl.clicked.connect(self.next_level_button_action) # type: ignore
     self.pb_prev_level.clicked.connect(self.prev_level_button_action) # type: ignore
     self.pb_headsup.clicked.connect(self.headsup_button_action) # type: ignore
+    self.pb_reset.clicked.connect(self.reset_button_action)
     timer.timeout.connect(self.showTime)
 
-    # RESIZE EVENT
+    # Resize Event
     self.resizeEvent = self.customResizeEvent
 
-    # Start stuff
+    # Start timer
     timer.start(self.time_step_ms)
 
+  # Event methods
   def customResizeEvent(self, event):
     self.updateFonts()
-
-  def timetime(self, l, m, s):
-    if m == 0 and s == 0:
-      return l+1, *self.level_period
-    if s == 0:
-      return l, m-1, 59
-    return l, m, s-1
 
   # method called by timer
   def showTime(self):
     self.sec_cnt += self.time_step_ms
     if self.sec_cnt == 1000:
       self.sec_cnt = 0
-      self.l, self.m, self.s = self.timetime(self.l, self.m, self.s)
-    self.timer_label.setText(f"{self.m}:{self.s : 03d}")
+      self.l, self.m, self.s = self.update_level_and_time(self.l, self.m, self.s)
+    self.timer_label.setText(f"{self.m}{self.vanishing_comma(self.sec_cnt)}{self.s:02d}")
     self.blinds_label.setText(f"L{self.l} | {self.l * self.sb}/{self.l * self.sb * 2}")
 
+  def vanishing_comma(self,
+                      sec_cnt: int,
+                      on_time: int = 100,
+                      position: int = 300):
+    if (sec_cnt > position) and (sec_cnt < (position + on_time)):
+      return " "
+    return ":"
+
+  def update_level_and_time(self, l, m, s):
+    if m == 0 and s == 0:
+      return l+1, *self.level_period
+    if s == 0:
+      return l, m-1, 59
+    return l, m, s-1
+
+  # Actions
   def next_level_button_action(self):
     self.l += 1
     self.m, self.s = self.level_period
 
   def prev_level_button_action(self):
-    self.l -= 1
+    if self.l != 1:
+      self.l -= 1
     self.m, self.s = self.level_period
 
   def headsup_button_action(self):
@@ -189,7 +150,7 @@ class PokerTimerWindow(QMainWindow):
     self.m, self.s = self.level_period
     self.sb = 100
 
-  def updateFonts(self, dividers : Sequence = [10,20,30]):
+  def updateFonts(self, dividers : Sequence = [8,20,30]):
     # Calculate font sizes based on window width and height
     width = self.width()
     font_size_1 = int(width / dividers[0])
@@ -217,23 +178,32 @@ class PokerTimerWindow(QMainWindow):
     font.setPointSize(font_size_3)
     self.pb_headsup.setFont(font)
 
+    font = self.pb_reset.font()
+    font.setPointSize(font_size_3)
+    self.pb_reset.setFont(font)
+
   def retranslateUi(self):
     _translate = QtCore.QCoreApplication.translate
     self.setWindowTitle(_translate("MainWindow", "PokerTimer"))
     self.timer_label.setText(_translate("MainWindow", "TextLabel"))
     self.blinds_label.setText(_translate("MainWindow", "TextLabel"))
-    self.pb_prev_level.setText(_translate("MainWindow", "<-"))
-    self.pb_next_lvl.setText(_translate("MainWindow", "->"))
+    self.pb_prev_level.setText(_translate("MainWindow", "<="))
+    self.pb_next_lvl.setText(_translate("MainWindow", "=>"))
     self.pb_headsup.setText(_translate("MainWindow", "HeadsUp"))
-    self.actionPrevLevel.setText(_translate("MainWindow", "PrevLevel"))
-    self.actionNextLevel.setText(_translate("MainWindow", "NextLevel"))
-    self.actionNextLevel.setToolTip(_translate("MainWindow", "NextLevel"))
-    self.actionHeadsUp.setText(_translate("MainWindow", "HeadsUp"))
+    self.pb_reset.setText(_translate("MainWindow", "Reset"))
 
 
 if __name__ == "__main__":
   import sys
+
+  # print(MyFonts.Timer.families())
+  # print(MyFonts.Timer.family())
+  from PyQt5.QtGui import QFont, QFontDatabase
+
+  # # QFontDatabase.addApplicationFont("./fonts/ToonyLine.otf")
+  # raise ValueError(QFontDatabase.families(QFontDatabase()))
+  # exit()
   app = QApplication(sys.argv)
-  ptw = PokerTimerWindow()
+  ptw = PokerTimerWindow(geometry=WindowGeometry.VGA)
   ptw.show()
   sys.exit(app.exec_())
