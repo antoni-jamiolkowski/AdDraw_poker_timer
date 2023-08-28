@@ -21,10 +21,15 @@ class WindowGeometry:
 class FontFamilies:
   ORIGAMI_MOMMY = "ORIGAMI MOMMY"
   MONOFONTO = "Monofonto"
+  SPACEMONO = "Monospace"
+  NOTOMONO = "Noto Mono"
+  TLWGMONO = "Tlwg Mono"
+  FREEMONO = "FreeMono"
+  GOMONO = "Go Mono"
 
 Family = FontFamilies.MONOFONTO
 Family2 = FontFamilies.MONOFONTO
-
+Family3 = FontFamilies.MONOFONTO
 
 class MyFonts:
   Timer = QFont()
@@ -36,18 +41,20 @@ class MyFonts:
   Blinds.setFamily(Family2)
   PushButton = QFont()
   PushButton.setBold(True)
-  PushButton.setFamily(Family2)
+  PushButton.setFamily(Family3)
 
 class MyLabel(QLabel):
   def __init__(self,
                name: str,
                font : QFont,
-               layout_dir: QtCore.Qt = QtCore.Qt.AlignCenter,
+               layout_dir: QtCore.Qt.AlignmentFlag = QtCore.Qt.AlignmentFlag.AlignCenter,
                autofillbg: bool = True,
                scaled_content: bool = True,
                line_width: int = 2,
                color : str = "white",
-               bg_colour: str = "rgba(200,200,200,90%)"):
+               bg_color: str = "rgba(40,40,40,70%)",
+               border_color: str = "gold",
+               padding: str = "0"):
     super().__init__()
     self.setSizeIncrement(QtCore.QSize(5, 5))
     self.setFont(font)
@@ -57,10 +64,17 @@ class MyLabel(QLabel):
     self.setAlignment(layout_dir)
     self.setObjectName(name)
     self.setLineWidth(line_width)
-    self.setStyleSheet(f"background-color: {bg_colour}; color: {color}; border: 5px solid green")
+    self.setStyleSheet(f"background-color: {bg_color};"
+                       f"color: {color};"
+                       f"border: 5px solid {border_color};"
+                       f"border-radius: 20px;"
+                       f"padding: {padding}px")
 
 class MyPushButton(QPushButton):
-  def __init__(self, name : str, font: QFont = MyFonts.PushButton):
+  def __init__(self,
+               name : str,
+               font: QFont = MyFonts.PushButton,
+               unclicked_style_sheet: str = "  background-color: rgba(220, 220, 220, 95%); border: 2px solid black;"):
     super().__init__()
     sizePolicy = QSizePolicy(QSizePolicy.Preferred, QSizePolicy.Preferred)
     sizePolicy.setHorizontalStretch(0)
@@ -69,11 +83,9 @@ class MyPushButton(QPushButton):
     self.setSizePolicy(sizePolicy)
     self.setFont(font)
     self.setObjectName(name)
-    self.setStyleSheet("QPushButton {"
-                        "  background-color: rgba(200, 200, 200, 95%);"
-                        "  border: 2px solid black;}"
+    self.setStyleSheet("QPushButton {" f"{unclicked_style_sheet}" "}"
                         "QPushButton:pressed{"
-                        "  background-color: rgb(41, 41, 41);"
+                        "  background-color: rgba(40, 40, 40, 95%);"
                         "  border:2px solid black;"
                         "color : white"
                         "}"
