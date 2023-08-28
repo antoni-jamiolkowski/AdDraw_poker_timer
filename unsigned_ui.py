@@ -31,15 +31,15 @@ class PokerTimerWindow(QMainWindow):
   def __init__(self,
                geometry : QSize = WindowGeometry.FHD,
                max_geometry : QSize = WindowGeometry.UHD,
-               level_period_m : int = 10,
-               small_blind_step : int = 200):
+               init_level_period_m : int = 10,
+               init_small_blind_step : int = 200):
     super().__init__()
     # POKER
-    self.level_period = [level_period_m, 0]
-    self.m = level_period_m
+    self.level_period = [init_level_period_m, 0]
+    self.m = init_level_period_m
     self.s = 0
     self.l = 1
-    self.sb = small_blind_step
+    self.sb = init_small_blind_step
     self.sec_cnt = 0
     self.time_step_ms = 10
     self.timer_running = False
@@ -236,5 +236,12 @@ class PokerTimerWindow(QMainWindow):
 if __name__ == "__main__":
   import sys
   app = QApplication(sys.argv)
-  ptw = PokerTimerWindow(geometry=WindowGeometry.VGA)
+  import argparse as argp
+  parser = argp.ArgumentParser()
+  parser.add_argument("--sb-step", default=200, type=int)
+  parser.add_argument("--round-period", default=10, type=int)
+  args = parser.parse_args()
+  ptw = PokerTimerWindow(geometry=WindowGeometry.VGA,
+                         init_level_period_m=args.round_period,
+                         init_small_blind_step=args.sb_step)
   sys.exit(app.exec_())
