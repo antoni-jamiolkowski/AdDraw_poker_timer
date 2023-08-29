@@ -1,7 +1,97 @@
+from enum import Enum, IntEnum
+
+from numpy import asarray
 from PyQt5 import QtCore
 from PyQt5.QtCore import QSize
 from PyQt5.QtGui import QFont, QFontDatabase
-from PyQt5.QtWidgets import QLabel, QPushButton, QSizePolicy, QGraphicsEffect
+from PyQt5.QtWidgets import QGraphicsEffect, QLabel, QPushButton, QSizePolicy
+
+
+class PokerMode(IntEnum):
+  NORMAL = 0
+  HEADSUP = 1
+
+class MyTime:
+  def __init__(self, m, s):
+    self.m = m
+    self.s = s
+
+  # @staticmethod
+  def _list(self):
+    return list((self.m, self.s))
+
+  def _arr(self):
+    return asarray([self.m, self.s])
+
+class PokerParameters:
+  def __init__(self,
+               level_period: MyTime,
+               level: int,
+               bb_step: int):
+
+    assert self.check_time(level_period), f"??? {level_period._list()}"
+    assert level > 0
+    assert bb_step > 1 and bb_step % 2 == 0
+
+    self.level_period = level_period
+    self.level = level
+    self.bb_step = bb_step
+
+  def check_time(self, new_time: MyTime):
+    if (new_time._arr() > 59).any():
+      raise ValueError(f"Both .m and .s have to be lower than 59")
+    if (new_time._arr() < 0).any():
+      raise ValueError(f"Both .m and .s have to be greater than 0")
+    return True
+
+class PokerStats:
+  def __init__(self,
+               config: PokerParameters
+               ):
+    self.update_config(config)
+
+  def update_config(self, config: PokerParameters):
+    self.config = config
+    self.level = config.level
+    self.minute = config.level_period.m
+    self.second = config.level_period.s
+    self.update_blinds()
+
+  def update_blinds(self):
+    self.big_blind = self.config.bb_step * self.level
+    self.small_blind = int(self.big_blind / 2)
+    self.nxt_big_blind = self.config.bb_step * (self.level+1)
+    self.nxt_small_blind = int(self.nxt_big_blind / 2)
+
+  def counter_increment(self):
+    if self.minute == 0 and self.second == 0:
+      self.level += 1
+      self.minute, self.second = self.config.level_period
+      return
+    if self.second == 0:
+      self.minute -= 1
+      self.second = 59
+      return
+    self.second -= 1
+    self.update_blinds()
+
+  def nxt_level(self):
+    self.level += 1
+    self.minute = self.config.level_period.m
+    self.second = self.config.level_period.s
+    self.update_blinds()
+
+  def prev_level(self):
+    if self.level != 1:
+      self.level -= 1
+    self.minute = self.config.level_period.m
+    self.second = self.config.level_period.s
+    self.update_blinds()
+
+  def _list(self):
+    return (self.level, self.minute, self.second,
+            self.big_blind, self.small_blind,
+            self.nxt_big_blind, self.nxt_small_blind)
 
 
 def setupQFontDataBase():

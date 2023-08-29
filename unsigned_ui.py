@@ -11,10 +11,11 @@
 from typing import Sequence
 
 from PyQt5 import QtCore
-from PyQt5.QtCore import QTimer, QSize
+from PyQt5.QtCore import QSize, QTimer
 from PyQt5.QtWidgets import QApplication, QGridLayout, QMainWindow, QWidget
 
-from utils import (MyFonts, MyLabel, MyPushButton, WindowGeometry,
+from utils import (MyFonts, MyLabel, MyPushButton, MyTime, PokerMode,
+                   PokerParameters, PokerStats, WindowGeometry,
                    setupQFontDataBase)
 
 '''
@@ -31,22 +32,32 @@ class PokerTimerWindow(QMainWindow):
   def __init__(self,
                geometry : QSize = WindowGeometry.FHD,
                max_geometry : QSize = WindowGeometry.UHD,
-               init_level_period_m : int = 10,
-               init_small_blind_step : int = 200):
+               norm_lvl_time : list[int] = [10,0],
+               norm_bb_step : int = 200,
+               headsup_lvl_time : list[int] = [8,0],
+               headsup_bb_step : int = 1000,
+               time_step_ms : int = 10
+               ):
     super().__init__()
     # POKER
-    self.level_period = [init_level_period_m, 0]
-    self.m = init_level_period_m
-    self.s = 0
-    self.l = 1
-    self.sb = init_small_blind_step
+    self.mode = PokerMode.NORMAL
+    # Poker parameters
+    self.normal_params = PokerParameters(MyTime(*norm_lvl_time),
+                                         1,
+                                         norm_bb_step)
+    self.headsup_params = PokerParameters(MyTime(*headsup_lvl_time),
+                                          1,
+                                          headsup_bb_step)
+    self.current_state = PokerStats(self.normal_params)
+    # Time counters
     self.sec_cnt = 0
-    self.time_step_ms = 10
+    self.time_step_ms = time_step_ms
     self.timer_running = False
     # Setup the Window
     self.setMaximumHeight(max_geometry.height())
     self.setMaximumWidth(max_geometry.width())
     self.setup_window(geometry)
+    # Show
     self.show()
 
   def setup_window(self,
@@ -106,10 +117,10 @@ class PokerTimerWindow(QMainWindow):
     # Connect widgets to actions
     self.pb_next_lvl.clicked.connect(self.next_level_button_action) # type: ignore
     self.pb_prev_level.clicked.connect(self.prev_level_button_action) # type: ignore
-    self.pb_headsup.clicked.connect(self.headsup_button_action) # type: ignore
+    self.pb_headsup.clicked.connect(self.mode_change_action) # type: ignore
     self.pb_reset.clicked.connect(self.reset_button_action)
     self.pb_start_stop.clicked.connect(self.start_stop_timer)
-    self.timer.timeout.connect(self.showTime)
+    self.timer.timeout.connect(self.updateStats)
 
     # Initialize texts
     self.update_texts()
@@ -121,20 +132,6 @@ class PokerTimerWindow(QMainWindow):
   def customResizeEvent(self, event):
     self.updateFonts()
 
-  def update_texts(self):
-    self.timer_label.setText(f"{self.m}{self.vanishing_comma(self.sec_cnt)}{self.s:02d}")
-    self.blinds_label.setText(f"{self.l * self.sb}/{self.l * self.sb * 2}")
-    self.next_blinds_label.setText(f"nextB:{(self.l+1) * self.sb}/{(self.l+1) * self.sb * 2}")
-    self.level_label.setText(f"Level {self.l:02d}")
-
-  # method called by timer
-  def showTime(self):
-    self.sec_cnt += self.time_step_ms
-    if self.sec_cnt == 1000:
-      self.sec_cnt = 0
-      self.l, self.m, self.s = self.update_level_and_time(self.l, self.m, self.s)
-    self.update_texts()
-
   def vanishing_comma(self,
                       sec_cnt: int,
                       on_time: int = 100,
@@ -142,6 +139,27 @@ class PokerTimerWindow(QMainWindow):
     if (sec_cnt > position) and (sec_cnt < (position + on_time)):
       return " "
     return ":"
+
+  def update_texts(self):
+    l, m, s, bb, sb, nbb, nsb = self.current_state._list()
+    print_comma = self.vanishing_comma(self.sec_cnt)
+    self.timer_label.setText(f"{m}{print_comma}{s:02d}")
+    self.blinds_label.setText(f"{sb}/{bb}")
+    self.next_blinds_label.setText(f"nextB:{nsb}/{nbb}")
+    self.level_label.setText(f"Level {l:02d}")
+
+  def count_time(self):
+    self.sec_cnt += self.time_step_ms
+    if self.sec_cnt == 1000:
+      self.sec_cnt = 0
+      return True
+    return False
+
+  # method called by timer
+  def updateStats(self):
+    if self.count_time():
+      self.current_state.counter_increment()
+    self.update_texts()
 
   def start_stop_timer(self):
     if self.timer_running:
@@ -159,35 +177,35 @@ class PokerTimerWindow(QMainWindow):
     self.timer_running = not self.timer_running
     self.pb_start_stop.repaint()
 
-  def update_level_and_time(self, l, m, s):
-    if m == 0 and s == 0:
-      return l+1, *self.level_period
-    if s == 0:
-      return l, m-1, 59
-    return l, m, s-1
 
   # Actions
   def next_level_button_action(self):
-    self.l += 1
-    self.m, self.s = self.level_period
+    self.current_state.nxt_level()
     self.update_texts()
 
   def prev_level_button_action(self):
-    if self.l != 1:
-      self.l -= 1
-    self.m, self.s = self.level_period
+    self.current_state.prev_level()
     self.update_texts()
 
-  def headsup_button_action(self):
-    self.l = 1
-    self.m, self.s = 10, 0
-    self.sb = 1000
+  def mode_change_action(self):
+    if self.mode == PokerMode.NORMAL:
+      self.pb_headsup.setStyleSheet("background-color: rgba(40,40,40,95%);"
+                                    "border: 2px solid black;"
+                                    "color: white;")
+      self.current_state.update_config(self.headsup_params)
+      self.mode = PokerMode.HEADSUP
+      self.pb_headsup.setText("Mode: Headsup")
+    else:
+      self.pb_headsup.setStyleSheet("background-color: rgba(220,220,220,95%);"
+                                    "border: 2px solid black;"
+                                    "color: black;")
+      self.current_state.update_config(self.normal_params)
+      self.mode = PokerMode.NORMAL
+      self.pb_headsup.setText("Mode: Normal")
     self.update_texts()
 
   def reset_button_action(self):
-    self.l = 1
-    self.m, self.s = self.level_period
-    self.sb = 100
+    self.current_state.update_config(self.normal_params)
     self.update_texts()
 
   def updateFonts(self, dividers : Sequence = [8,18,30]):
@@ -228,7 +246,7 @@ class PokerTimerWindow(QMainWindow):
     self.level_label.setText(_translate("MainWindow", "TextLabel"))
     self.pb_prev_level.setText(_translate("MainWindow", "<="))
     self.pb_next_lvl.setText(_translate("MainWindow", "=>"))
-    self.pb_headsup.setText(_translate("MainWindow", "HeadsUp"))
+    self.pb_headsup.setText(_translate("MainWindow", "Mode: Normal"))
     self.pb_reset.setText(_translate("MainWindow", "Reset"))
     self.pb_start_stop.setText(_translate("MainWindow", "Start"))
 
@@ -238,10 +256,14 @@ if __name__ == "__main__":
   app = QApplication(sys.argv)
   import argparse as argp
   parser = argp.ArgumentParser()
-  parser.add_argument("--sb-step", default=200, type=int)
-  parser.add_argument("--round-period", default=10, type=int)
+  parser.add_argument("--norm-bb-step", default=200, type=int)
+  parser.add_argument("--norm-round-time", nargs='+', default=[10,0], type=list[int])
+  parser.add_argument("--hu-bb-step", default=2000, type=int)
+  parser.add_argument("--hu-round-time", nargs='+', default=[5,0], type=list[int])
   args = parser.parse_args()
   ptw = PokerTimerWindow(geometry=WindowGeometry.VGA,
-                         init_level_period_m=args.round_period,
-                         init_small_blind_step=args.sb_step)
+                         norm_lvl_time = args.norm_round_time,
+                         norm_bb_step = args.norm_bb_step,
+                         headsup_lvl_time = args.hu_round_time,
+                         headsup_bb_step = args.hu_bb_step)
   sys.exit(app.exec_())
