@@ -30,8 +30,8 @@ from utils import (MyFonts, MyLabel, MyPushButton, MyTime, PokerMode,
 
 class PokerTimerWindow(QMainWindow):
   def __init__(self,
-               geometry : QSize = WindowGeometry.FHD,
-               max_geometry : QSize = WindowGeometry.UHD,
+               geometry : QSize = WindowGeometry.FHD.value,
+               max_geometry : QSize = WindowGeometry.UHD.value,
                norm_lvl_time : list[int] = [10,0],
                norm_bb_step : int = 200,
                headsup_lvl_time : list[int] = [8,0],
@@ -61,7 +61,7 @@ class PokerTimerWindow(QMainWindow):
     self.show()
 
   def setup_window(self,
-                   geometry : WindowGeometry = WindowGeometry.FHD):
+                   geometry : QSize = WindowGeometry.FHD.value):
     # QT
     self.setObjectName("MainWindow")
     self.resize(geometry)
@@ -260,8 +260,11 @@ if __name__ == "__main__":
   parser.add_argument("--norm-round-time", nargs='+', default=[10,0], type=list[int])
   parser.add_argument("--hu-bb-step", default=2000, type=int)
   parser.add_argument("--hu-round-time", nargs='+', default=[5,0], type=list[int])
+  parser.add_argument("-g", "--geometry", default="VGA", choices=WindowGeometry._member_map_)
   args = parser.parse_args()
-  ptw = PokerTimerWindow(geometry=WindowGeometry.VGA,
+  geometry = getattr(WindowGeometry, args.geometry)
+
+  ptw = PokerTimerWindow(geometry=geometry.value,
                          norm_lvl_time = args.norm_round_time,
                          norm_bb_step = args.norm_bb_step,
                          headsup_lvl_time = args.hu_round_time,

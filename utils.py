@@ -1,4 +1,4 @@
-from enum import Enum, IntEnum
+from enum import Enum, IntEnum, unique
 
 from numpy import asarray
 from PyQt5 import QtCore
@@ -7,9 +7,35 @@ from PyQt5.QtGui import QFont, QFontDatabase
 from PyQt5.QtWidgets import QGraphicsEffect, QLabel, QPushButton, QSizePolicy
 
 
+@unique
 class PokerMode(IntEnum):
   NORMAL = 0
   HEADSUP = 1
+
+
+@unique
+class WindowGeometry(Enum):
+  UHD = QSize(3840, 2160)
+  FHD = QSize(1920, 1080)
+  VGA = QSize(640, 480)
+  QVGA = QSize(320, 240)
+
+
+@unique
+class FontFamilies(Enum):
+  ORIGAMI_MOMMY = "ORIGAMI MOMMY"
+  MONOFONTO = "Monofonto"
+  SPACEMONO = "Monospace"
+  NOTOMONO = "Noto Mono"
+  TLWGMONO = "Tlwg Mono"
+  FREEMONO = "FreeMono"
+  GOMONO = "Go Mono"
+
+
+Family = FontFamilies.MONOFONTO.value
+Family2 = FontFamilies.MONOFONTO.value
+Family3 = FontFamilies.MONOFONTO.value
+
 
 class MyTime:
   def __init__(self, m, s):
@@ -22,6 +48,7 @@ class MyTime:
 
   def _arr(self):
     return asarray([self.m, self.s])
+
 
 class PokerParameters:
   def __init__(self,
@@ -43,6 +70,7 @@ class PokerParameters:
     if (new_time._arr() < 0).any():
       raise ValueError(f"Both .m and .s have to be greater than 0")
     return True
+
 
 class PokerStats:
   def __init__(self,
@@ -101,26 +129,6 @@ def setupQFontDataBase():
   return qfont_db
 
 
-class WindowGeometry:
-  UHD = QSize(3840, 2160)
-  FHD = QSize(1920, 1080)
-  VGA = QSize(640, 480)
-  QVGA = QSize(320, 240)
-
-
-class FontFamilies:
-  ORIGAMI_MOMMY = "ORIGAMI MOMMY"
-  MONOFONTO = "Monofonto"
-  SPACEMONO = "Monospace"
-  NOTOMONO = "Noto Mono"
-  TLWGMONO = "Tlwg Mono"
-  FREEMONO = "FreeMono"
-  GOMONO = "Go Mono"
-
-Family = FontFamilies.MONOFONTO
-Family2 = FontFamilies.MONOFONTO
-Family3 = FontFamilies.MONOFONTO
-
 class MyFonts:
   Timer = QFont()
   Timer.setFamily(Family)
@@ -132,6 +140,7 @@ class MyFonts:
   PushButton = QFont()
   PushButton.setBold(True)
   PushButton.setFamily(Family3)
+
 
 class MyLabel(QLabel):
   def __init__(self,
@@ -159,6 +168,7 @@ class MyLabel(QLabel):
                        f"border: 5px solid {border_color};"
                        f"border-radius: 20px;"
                        f"padding: {padding}px")
+
 
 class MyPushButton(QPushButton):
   def __init__(self,
