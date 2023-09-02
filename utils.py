@@ -5,7 +5,7 @@ from numpy import asarray
 from PyQt5 import QtCore, QtGui
 from PyQt5.QtCore import QSize
 from PyQt5.QtGui import QFont, QFontDatabase
-from PyQt5.QtWidgets import (QGridLayout, QLabel, QLineEdit, QPushButton,
+from PyQt5.QtWidgets import (QHBoxLayout, QLabel, QLineEdit, QPushButton,
                              QSizePolicy, QWidget)
 
 
@@ -150,9 +150,9 @@ class MyForm(QWidget):
     self.name = name
     self.label = MyLabel(name, font)
     self.line_edit = MyQLineEdit(value)
-    self.layout = QGridLayout(self)
-    self.layout.addWidget(self.label    , 0,0,1,1)
-    self.layout.addWidget(self.line_edit, 0,1,1,1)
+    self.layout = QHBoxLayout(self)
+    self.layout.addWidget(self.label    )
+    self.layout.addWidget(self.line_edit)
 
   def updateText(self, value: Optional[str] = None):
     self.label.setText(self.name)
