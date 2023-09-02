@@ -4,7 +4,7 @@ from numpy import asarray
 from PyQt5 import QtCore
 from PyQt5.QtCore import QSize
 from PyQt5.QtGui import QFont, QFontDatabase
-from PyQt5.QtWidgets import QGraphicsEffect, QLabel, QPushButton, QSizePolicy
+from PyQt5.QtWidgets import QLabel, QPushButton, QSizePolicy
 
 
 @unique
