@@ -98,11 +98,10 @@ class PokerTimerWindow(QMainWindow):
     self.next_blinds_label = MyLabel("NxtBlinds", MyFonts.Blinds, border_color="transparent", bg_color="transparent",
                                      layout_dir=QtCore.Qt.AlignmentFlag.AlignBottom | QtCore.Qt.AlignmentFlag.AlignHCenter)
     ## PushButtons
-    self.pb_prev_level = MyPushButton("prev_lvl_pb")
-    self.pb_next_lvl = MyPushButton("next_lvl_pb")
+
     self.pb_headsup = MyPushButton("headsup_pb")
     self.pb_reset = MyPushButton("reset_pb")
-    self.pb_start_stop = MyPushButton("start_stop_pb")
+    self.lvl_timer_control = Level_Timer_Control(self)
 
     # Add Widgets to Layout
     # Upper section
@@ -111,13 +110,11 @@ class PokerTimerWindow(QMainWindow):
     self.gridLayout.addWidget(self.level_label      , 0, 0, 1, 2)
     self.gridLayout.addWidget(self.next_blinds_label, 2, 0, 1, 2)
     # Lower section
-    self.gridLayout.addWidget(self.pb_prev_level, 3, 2, 1, 1)
-    self.gridLayout.addWidget(self.pb_start_stop, 3, 3, 1, 1)
-    self.gridLayout.addWidget(self.pb_next_lvl  , 3, 4, 1, 1)
-    self.gridLayout.addWidget(self.pb_reset     , 3, 1, 1, 1)
-    self.gridLayout.addWidget(self.pb_headsup   , 4, 1, 1, 1)
-    self.gridLayout.addWidget(self.norm_form    , 3, 0, 1, 1)
-    self.gridLayout.addWidget(self.hu_form      , 4, 0, 1, 1)
+    self.gridLayout.addWidget(self.lvl_timer_control, 3, 2, 1, 3)
+    self.gridLayout.addWidget(self.pb_reset         , 3, 1, 1, 1)
+    self.gridLayout.addWidget(self.pb_headsup       , 4, 1, 1, 1)
+    self.gridLayout.addWidget(self.norm_form        , 3, 0, 1, 1)
+    self.gridLayout.addWidget(self.hu_form          , 4, 0, 1, 1)
 
     self.retranslateUi() # change labels
 
@@ -129,11 +126,11 @@ class PokerTimerWindow(QMainWindow):
     QtCore.QMetaObject.connectSlotsByName(self)
 
     # Connect widgets to actions
-    self.pb_next_lvl.clicked.connect(self.next_level_button_action) # type: ignore
-    self.pb_prev_level.clicked.connect(self.prev_level_button_action) # type: ignore
+    self.lvl_timer_control.pb_next_lvl.clicked.connect(self.next_level_button_action) # type: ignore
+    self.lvl_timer_control.pb_prev_level.clicked.connect(self.prev_level_button_action) # type: ignore
+    self.lvl_timer_control.pb_start_stop.clicked.connect(self.start_stop_timer)
     self.pb_headsup.clicked.connect(self.mode_change_action) # type: ignore
     self.pb_reset.clicked.connect(self.reset_button_action)
-    self.pb_start_stop.clicked.connect(self.start_stop_timer)
     self.timer.timeout.connect(self.updateStats)
 
     # Initialize texts
@@ -206,18 +203,18 @@ class PokerTimerWindow(QMainWindow):
   def start_stop_timer(self):
     if self.timer_running:
       self.timer.stop()
-      self.pb_start_stop.setText("Start")
-      self.pb_start_stop.setStyleSheet("background-color: rgba(220,220,220,95%);"
-                                       "border: 2px solid black;"
-                                       "color: black;")
+      self.lvl_timer_control.pb_start_stop.setText("⏯️")
+      self.lvl_timer_control.pb_start_stop.setStyleSheet("background-color: rgba(220,220,220,95%);"
+                                                         "border: 2px solid black;"
+                                                         "color: black;")
     else:
       self.timer.start(self.time_step_ms)
-      self.pb_start_stop.setText("Stop")
-      self.pb_start_stop.setStyleSheet("background-color: rgba(40,40,40,95%);"
-                                       "border: 2px solid black;"
-                                       "color: white;")
+      self.lvl_timer_control.pb_start_stop.setText("⏯️")
+      self.lvl_timer_control.pb_start_stop.setStyleSheet("background-color: rgba(40,40,40,95%);"
+                                                         "border: 2px solid black;"
+                                                         "color: white;")
     self.timer_running = not self.timer_running
-    self.pb_start_stop.repaint()
+    self.lvl_timer_control.pb_start_stop.repaint()
 
 
   # Actions
@@ -273,10 +270,8 @@ class PokerTimerWindow(QMainWindow):
     self.timer_label = update_font(self.timer_label, FontReSize.S1)
     self.blinds_label = update_font(self.blinds_label, FontReSize.S2)
     self.level_label = update_font(self.level_label, FontReSize.S3)
-    self.pb_next_lvl = update_font(self.pb_next_lvl, FontReSize.S3)
-    self.pb_prev_level = update_font(self.pb_prev_level, FontReSize.S3)
+    self.lvl_timer_control.updateFonts(FontReSize.S3)
     self.pb_headsup = update_font(self.pb_headsup, FontReSize.S4)
-    self.pb_start_stop = update_font(self.pb_start_stop, FontReSize.S3)
     self.pb_reset = update_font(self.pb_reset, FontReSize.S3)
     self.next_blinds_label = update_font(self.next_blinds_label, FontReSize.S4)
     self.norm_form.updateFonts(FontReSize.S5)
@@ -289,11 +284,11 @@ class PokerTimerWindow(QMainWindow):
     self.blinds_label.setText(_translate("MainWindow", "TextLabel"))
     self.next_blinds_label.setText(_translate("MainWindow", "TextLabel"))
     self.level_label.setText(_translate("MainWindow", "TextLabel"))
-    self.pb_prev_level.setText(_translate("MainWindow", "<="))
-    self.pb_next_lvl.setText(_translate("MainWindow", "=>"))
+    self.lvl_timer_control.pb_prev_level.setText(_translate("MainWindow", "◀"))
+    self.lvl_timer_control.pb_next_lvl.setText(_translate("MainWindow", "▶"))
     self.pb_headsup.setText(_translate("MainWindow", "Normal"))
     self.pb_reset.setText(_translate("MainWindow", "Reset"))
-    self.pb_start_stop.setText(_translate("MainWindow", "Start"))
+    self.lvl_timer_control.pb_start_stop.setText(_translate("MainWindow", "⏯️"))
     self.norm_form.updateText()
     self.hu_form.updateText()
 

@@ -166,6 +166,27 @@ class MyForm(QWidget):
     lineEditFont.setPointSize(font_size)
     self.line_edit.setFont(lineEditFont)
 
+class Level_Timer_Control(QWidget):
+  def __init__(self, parent: QWidget) -> None:
+    super().__init__(parent)
+    self.pb_prev_level = MyPushButton("prev_lvl_pb")
+    self.pb_next_lvl = MyPushButton("next_lvl_pb")
+    self.pb_start_stop = MyPushButton("start_stop_pb")
+    self.layout = QHBoxLayout(self)
+    self.layout.addWidget(self.pb_prev_level)
+    self.layout.addWidget(self.pb_start_stop)
+    self.layout.addWidget(self.pb_next_lvl)
+  def updateFonts(self, font_size: int):
+    font = self.pb_prev_level.font()
+    font.setPointSize(font_size)
+    self.pb_prev_level.setFont(font)
+    font = self.pb_next_lvl.font()
+    font.setPointSize(font_size)
+    self.pb_next_lvl.setFont(font)
+    font = self.pb_start_stop.font()
+    font.setPointSize(font_size)
+    self.pb_start_stop.setFont(font)
+
 
 class MyQLineEdit(QLineEdit):
   def __init__(self, value: int, font: MyFonts = MyFonts.Blinds):
@@ -196,6 +217,7 @@ class MyQLineEdit(QLineEdit):
   def leaveEvent(self, a0) -> None:
     self.updateText()
     return super().leaveEvent(a0)
+
 
 class MyLabel(QLabel):
   def __init__(self,
