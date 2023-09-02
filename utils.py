@@ -4,9 +4,9 @@ from typing import Optional
 from numpy import asarray
 from PyQt5 import QtCore, QtGui
 from PyQt5.QtCore import QSize
-from PyQt5.QtGui import QFont, QFontDatabase
+from PyQt5.QtGui import QFont, QMouseEvent, QFontDatabase
 from PyQt5.QtWidgets import (QHBoxLayout, QLabel, QLineEdit, QPushButton,
-                             QSizePolicy, QWidget)
+                             QSizePolicy, QMessageBox, QWidget)
 
 
 @unique
@@ -169,9 +169,9 @@ class MyForm(QWidget):
 class Level_Timer_Control(QWidget):
   def __init__(self, parent: QWidget) -> None:
     super().__init__(parent)
-    self.pb_prev_level = MyPushButton("prev_lvl_pb")
-    self.pb_next_lvl = MyPushButton("next_lvl_pb")
-    self.pb_start_stop = MyPushButton("start_stop_pb")
+    self.pb_prev_level = MyPushButton("prev_lvl_pb", whats_this="Button that goes to Level-1, cannot go below 1")
+    self.pb_next_lvl = MyPushButton("next_lvl_pb", whats_this="Button that goes to Level+1")
+    self.pb_start_stop = MyPushButton("start_stop_pb", whats_this="Button that starts/stops the timer")
     self.layout = QHBoxLayout(self)
     self.layout.addWidget(self.pb_prev_level)
     self.layout.addWidget(self.pb_start_stop)
@@ -250,8 +250,9 @@ class MyLabel(QLabel):
 class MyPushButton(QPushButton):
   def __init__(self,
                name : str,
+               whats_this :str = "This is a button, DUH",
                font: QFont = MyFonts.PushButton,
-               unclicked_style_sheet: str = "background-color: rgba(220, 220, 220, 95%); border: 2px solid black;"):
+               unclicked_style_sheet: str = "border-radius: 0; background-color: rgba(220, 220, 220, 95%); border: 2px solid black;"):
     super().__init__()
     sizePolicy = QSizePolicy(QSizePolicy.Preferred, QSizePolicy.Preferred)
     sizePolicy.setHorizontalStretch(0)
@@ -259,6 +260,7 @@ class MyPushButton(QPushButton):
     sizePolicy.setHeightForWidth(self.sizePolicy().hasHeightForWidth())
     self.setSizePolicy(sizePolicy)
     self.setFont(font)
+    self.setWhatsThis(whats_this)
     self.setObjectName(name)
     self.setStyleSheet("QPushButton {" f"{unclicked_style_sheet}" "}"
                         "QPushButton:pressed{"
@@ -267,3 +269,14 @@ class MyPushButton(QPushButton):
                         "color : white"
                         "}"
                         )
+
+  def mousePressEvent(self, e: QMouseEvent) -> None:
+    if e.button() == 2:
+      print(self.whatsThis())
+      x = QMessageBox(self)
+      x.setWindowTitle("Info")
+      x.setText(self.whatsThis())
+      x.setIcon(QMessageBox.Information)
+      x.exec()
+    else:
+      return super().mousePressEvent(e)

@@ -99,8 +99,8 @@ class PokerTimerWindow(QMainWindow):
                                      layout_dir=QtCore.Qt.AlignmentFlag.AlignBottom | QtCore.Qt.AlignmentFlag.AlignHCenter)
     ## PushButtons
 
-    self.pb_headsup = MyPushButton("headsup_pb")
-    self.pb_reset = MyPushButton("reset_pb")
+    self.pb_headsup = MyPushButton("headsup_pb", whats_this="Switched between Normal(lowBB and long) and Headsup(highBB and short) Mode of play")
+    self.pb_reset = MyPushButton("reset_pb", whats_this="Resets the Level to 1 and timer to round period")
     self.lvl_timer_control = Level_Timer_Control(self)
 
     # Add Widgets to Layout
