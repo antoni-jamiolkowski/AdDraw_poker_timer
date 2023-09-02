@@ -2,11 +2,11 @@ from enum import Enum, IntEnum, unique
 from typing import Optional
 
 from numpy import asarray
-from PyQt5 import QtCore, QtGui
+from PyQt5 import QtCore
 from PyQt5.QtCore import QSize
-from PyQt5.QtGui import QFont, QMouseEvent, QFontDatabase
-from PyQt5.QtWidgets import (QHBoxLayout, QLabel, QLineEdit, QPushButton,
-                             QSizePolicy, QMessageBox, QWidget)
+from PyQt5.QtGui import QFont, QFontDatabase, QMouseEvent
+from PyQt5.QtWidgets import (QHBoxLayout, QLabel, QLineEdit, QMessageBox,
+                             QPushButton, QSizePolicy, QWidget)
 
 
 @unique
@@ -165,6 +165,7 @@ class MyForm(QWidget):
     lineEditFont = self.line_edit.font()
     lineEditFont.setPointSize(font_size)
     self.line_edit.setFont(lineEditFont)
+
 
 class Level_Timer_Control(QWidget):
   def __init__(self, parent: QWidget) -> None:

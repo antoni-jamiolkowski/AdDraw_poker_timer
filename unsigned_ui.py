@@ -78,16 +78,10 @@ class PokerTimerWindow(QMainWindow):
     self.timer = QTimer(self.gridLayout)
 
     ## LineEdit
-    self.norm_form = MyForm("NormBB",
+    self.bb_input_line = MyForm("BB Step",
                             font = MyFonts.Blinds,
-                            value=self.normal_params.bb_step)
-    self.norm_form.line_edit.keyReleaseEvent = self.formKeyReleasedAction
-
-
-    self.hu_form = MyForm("HuBB",
-                            font = MyFonts.Blinds,
-                            value=self.headsup_params.bb_step)
-    self.hu_form.line_edit.keyReleaseEvent = self.formKeyReleasedAction
+                            value=self.current_state.big_blind)
+    self.bb_input_line.line_edit.keyReleaseEvent = self.formKeyReleasedAction
 
     ## Labels
     self.timer_label = MyLabel("Timer", MyFonts.Timer)
@@ -113,8 +107,7 @@ class PokerTimerWindow(QMainWindow):
     self.gridLayout.addWidget(self.lvl_timer_control, 4, 2, 1, 3)
     self.gridLayout.addWidget(self.pb_reset         , 4, 0, 1, 1)
     self.gridLayout.addWidget(self.pb_headsup       , 4, 1, 1, 1)
-    self.gridLayout.addWidget(self.norm_form        , 3, 0, 1, 1)
-    self.gridLayout.addWidget(self.hu_form          , 3, 1, 1, 1)
+    self.gridLayout.addWidget(self.bb_input_line    , 3, 0, 1, 2)
 
     self.retranslateUi() # change labels
 
@@ -156,19 +149,18 @@ class PokerTimerWindow(QMainWindow):
         return check_valid((string.split(":")[-1]))
       else:
         return check_valid(string)
-    norm_val, NisInt  = get_int(self.norm_form.line_edit.displayText())
-    hu_val, HisInt = get_int(self.hu_form.line_edit.displayText())
-    self.norm_form.line_edit.value = norm_val
-    if NisInt:
-      self.normal_params.bb_step = norm_val
-    self.hu_form.line_edit.value = hu_val
-    if HisInt:
-      self.headsup_params.bb_step = hu_val
+    val, isInt  = get_int(self.bb_input_line.line_edit.displayText())
+    self.bb_input_line.line_edit.value = val
+    if isInt:
+      if self.mode == PokerMode.NORMAL:
+        self.normal_params.bb_step = val
+      else:
+        self.headsup_params.bb_step = val
+
     self.current_state.update_blinds()
-    if norm_val != "":
-     self.norm_form.updateText()
-    if hu_val != "":
-      self.hu_form.updateText()
+    if val != "":
+     self.bb_input_line.updateText()
+
     self.update_texts()
 
   def vanishing_comma(self,
@@ -228,6 +220,7 @@ class PokerTimerWindow(QMainWindow):
 
   def mode_change_action(self):
     if self.mode == PokerMode.NORMAL:
+      self.bb_input_line.line_edit.value = self.headsup_params.bb_step
       self.pb_headsup.setStyleSheet("background-color: rgba(40,40,40,95%);"
                                     "border: 2px solid black;"
                                     "color: white;")
@@ -235,12 +228,14 @@ class PokerTimerWindow(QMainWindow):
       self.mode = PokerMode.HEADSUP
       self.pb_headsup.setText("Headsup")
     else:
+      self.bb_input_line.line_edit.value = self.normal_params.bb_step
       self.pb_headsup.setStyleSheet("background-color: rgba(220,220,220,95%);"
                                     "border: 2px solid black;"
                                     "color: black;")
       self.current_state.update_config(self.normal_params)
       self.mode = PokerMode.NORMAL
       self.pb_headsup.setText("Normal")
+    self.bb_input_line.updateText()
     self.update_texts()
 
   def reset_button_action(self):
@@ -274,8 +269,7 @@ class PokerTimerWindow(QMainWindow):
     self.pb_headsup = update_font(self.pb_headsup, FontReSize.S4)
     self.pb_reset = update_font(self.pb_reset, FontReSize.S3)
     self.next_blinds_label = update_font(self.next_blinds_label, FontReSize.S4)
-    self.norm_form.updateFonts(FontReSize.S5)
-    self.hu_form.updateFonts(FontReSize.S5)
+    self.bb_input_line.updateFonts(FontReSize.S5)
 
   def retranslateUi(self):
     _translate = QtCore.QCoreApplication.translate
@@ -289,8 +283,7 @@ class PokerTimerWindow(QMainWindow):
     self.pb_headsup.setText(_translate("MainWindow", "Normal"))
     self.pb_reset.setText(_translate("MainWindow", "Reset"))
     self.lvl_timer_control.pb_start_stop.setText(_translate("MainWindow", "⏯️"))
-    self.norm_form.updateText()
-    self.hu_form.updateText()
+    self.bb_input_line.updateText()
 
 
 if __name__ == "__main__":
