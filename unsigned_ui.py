@@ -168,6 +168,10 @@ class PokerTimerWindow(QMainWindow):
     if HisInt:
       self.headsup_params.bb_step = hu_val
     self.current_state.update_blinds()
+    if norm_val != "":
+     self.norm_form.updateText()
+    if hu_val != "":
+      self.hu_form.updateText()
     self.update_texts()
 
   def vanishing_comma(self,

@@ -193,9 +193,9 @@ class MyQLineEdit(QLineEdit):
     self.setText("")
     return super().mousePressEvent(a0)
 
-  def focusOutEvent(self, a0) -> None:
+  def leaveEvent(self, a0) -> None:
     self.updateText()
-    return super().focusOutEvent(a0)
+    return super().leaveEvent(a0)
 
 class MyLabel(QLabel):
   def __init__(self,
