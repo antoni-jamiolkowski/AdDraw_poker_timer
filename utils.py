@@ -1,10 +1,12 @@
 from enum import Enum, IntEnum, unique
+from typing import Optional
 
 from numpy import asarray
-from PyQt5 import QtCore
+from PyQt5 import QtCore, QtGui
 from PyQt5.QtCore import QSize
 from PyQt5.QtGui import QFont, QFontDatabase
-from PyQt5.QtWidgets import QLabel, QPushButton, QSizePolicy
+from PyQt5.QtWidgets import (QGridLayout, QLabel, QLineEdit, QPushButton,
+                             QSizePolicy, QWidget)
 
 
 @unique
@@ -141,6 +143,59 @@ class MyFonts:
   PushButton.setBold(True)
   PushButton.setFamily(Family3)
 
+
+class MyForm(QWidget):
+  def __init__(self, name, font, value):
+    super().__init__()
+    self.name = name
+    self.label = MyLabel(name, font)
+    self.line_edit = MyQLineEdit(value)
+    self.layout = QGridLayout(self)
+    self.layout.addWidget(self.label    , 0,0,1,1)
+    self.layout.addWidget(self.line_edit, 0,1,1,1)
+
+  def updateText(self, value: Optional[str] = None):
+    self.label.setText(self.name)
+    self.line_edit.updateText(value)
+
+  def updateFonts(self, font_size: int):
+    labelFont = self.label.font()
+    labelFont.setPointSize(font_size)
+    self.label.setFont(labelFont)
+    lineEditFont = self.line_edit.font()
+    lineEditFont.setPointSize(font_size)
+    self.line_edit.setFont(lineEditFont)
+
+
+class MyQLineEdit(QLineEdit):
+  def __init__(self, value: int, font: MyFonts = MyFonts.Blinds):
+    super().__init__()
+    self.value = value
+    self.setText(f"{value}")
+    self.setLayoutDirection(QtCore.Qt.LeftToRight)
+    self.setSizeIncrement(QtCore.QSize(1, 1))
+    self.setFont(font)
+    self.setLayoutDirection(QtCore.Qt.LeftToRight)
+    self.setAutoFillBackground(False)
+    sizePolicy = QSizePolicy(QSizePolicy.Preferred, QSizePolicy.Preferred)
+    sizePolicy.setHorizontalStretch(0)
+    sizePolicy.setVerticalStretch(0)
+    sizePolicy.setHeightForWidth(self.sizePolicy().hasHeightForWidth())
+    self.setSizePolicy(sizePolicy)
+
+  def updateText(self,
+                 value: Optional[str] = None):
+    if value is not None:
+      self.value = int(value)
+    self.setText(f"{self.value}")
+
+  def mousePressEvent(self, a0) -> None:
+    self.setText("")
+    return super().mousePressEvent(a0)
+
+  def focusOutEvent(self, a0) -> None:
+    self.updateText()
+    return super().focusOutEvent(a0)
 
 class MyLabel(QLabel):
   def __init__(self,

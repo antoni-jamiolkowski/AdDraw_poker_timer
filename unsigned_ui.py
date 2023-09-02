@@ -12,11 +12,10 @@ from typing import Sequence
 
 from PyQt5 import QtCore
 from PyQt5.QtCore import QSize, QTimer
-from PyQt5.QtWidgets import QApplication, QGridLayout, QMainWindow, QWidget
+from PyQt5.QtWidgets import (QApplication, QGridLayout, QLineEdit, QMainWindow,
+                             QWidget)
 
-from utils import (MyFonts, MyLabel, MyPushButton, MyTime, PokerMode,
-                   PokerParameters, PokerStats, WindowGeometry,
-                   setupQFontDataBase)
+from utils import *
 
 '''
   Config:
@@ -77,6 +76,19 @@ class PokerTimerWindow(QMainWindow):
     # QTWidgets
     ## Timer
     self.timer = QTimer(self.gridLayout)
+
+    ## LineEdit
+    self.norm_form = MyForm("NormBB",
+                            font = MyFonts.Blinds,
+                            value=self.normal_params.bb_step)
+    self.norm_form.line_edit.keyReleaseEvent = self.formKeyReleasedAction
+
+
+    self.hu_form = MyForm("HuBB",
+                            font = MyFonts.Blinds,
+                            value=self.headsup_params.bb_step)
+    self.hu_form.line_edit.keyReleaseEvent = self.formKeyReleasedAction
+
     ## Labels
     self.timer_label = MyLabel("Timer", MyFonts.Timer)
     self.level_label = MyLabel("Level", MyFonts.Blinds, border_color="transparent", bg_color="transparent",
@@ -102,8 +114,10 @@ class PokerTimerWindow(QMainWindow):
     self.gridLayout.addWidget(self.pb_prev_level, 3, 2, 1, 1)
     self.gridLayout.addWidget(self.pb_start_stop, 3, 3, 1, 1)
     self.gridLayout.addWidget(self.pb_next_lvl  , 3, 4, 1, 1)
-    self.gridLayout.addWidget(self.pb_reset     , 3, 0, 1, 2)
-    self.gridLayout.addWidget(self.pb_headsup   , 4, 0, 1, 2)
+    self.gridLayout.addWidget(self.pb_reset     , 3, 1, 1, 1)
+    self.gridLayout.addWidget(self.pb_headsup   , 4, 1, 1, 1)
+    self.gridLayout.addWidget(self.norm_form    , 3, 0, 1, 1)
+    self.gridLayout.addWidget(self.hu_form      , 4, 0, 1, 1)
 
     self.retranslateUi() # change labels
 
@@ -131,6 +145,30 @@ class PokerTimerWindow(QMainWindow):
   # Event methods
   def customResizeEvent(self, event):
     self.updateFonts()
+
+  # KeyReleaseEvent
+  def formKeyReleasedAction(self, *args):
+    def check_valid(string):
+      try:
+        val = int(string)
+        return val, True
+      except ValueError:
+        return f"{string} not VALID", False
+    def get_int(string):
+      if ":" in string:
+        return check_valid((string.split(":")[-1]))
+      else:
+        return check_valid(string)
+    norm_val, NisInt  = get_int(self.norm_form.line_edit.displayText())
+    hu_val, HisInt = get_int(self.hu_form.line_edit.displayText())
+    self.norm_form.line_edit.value = norm_val
+    if NisInt:
+      self.normal_params.bb_step = norm_val
+    self.hu_form.line_edit.value = hu_val
+    if HisInt:
+      self.headsup_params.bb_step = hu_val
+    self.current_state.update_blinds()
+    self.update_texts()
 
   def vanishing_comma(self,
                       sec_cnt: int,
@@ -194,14 +232,14 @@ class PokerTimerWindow(QMainWindow):
                                     "color: white;")
       self.current_state.update_config(self.headsup_params)
       self.mode = PokerMode.HEADSUP
-      self.pb_headsup.setText("Mode: Headsup")
+      self.pb_headsup.setText("Headsup")
     else:
       self.pb_headsup.setStyleSheet("background-color: rgba(220,220,220,95%);"
                                     "border: 2px solid black;"
                                     "color: black;")
       self.current_state.update_config(self.normal_params)
       self.mode = PokerMode.NORMAL
-      self.pb_headsup.setText("Mode: Normal")
+      self.pb_headsup.setText("Normal")
     self.update_texts()
 
   def reset_button_action(self):
@@ -219,6 +257,7 @@ class PokerTimerWindow(QMainWindow):
       S2 = int(width / dividers[1])
       S3 = int(width / dividers[2])
       S4 = int(width / 30)
+      S5 = int(width / 75)
 
     def update_font(obj, font_size):
       # Update font sizes keeping other font parameters correct
@@ -232,10 +271,12 @@ class PokerTimerWindow(QMainWindow):
     self.level_label = update_font(self.level_label, FontReSize.S3)
     self.pb_next_lvl = update_font(self.pb_next_lvl, FontReSize.S3)
     self.pb_prev_level = update_font(self.pb_prev_level, FontReSize.S3)
-    self.pb_headsup = update_font(self.pb_headsup, FontReSize.S3)
+    self.pb_headsup = update_font(self.pb_headsup, FontReSize.S4)
     self.pb_start_stop = update_font(self.pb_start_stop, FontReSize.S3)
     self.pb_reset = update_font(self.pb_reset, FontReSize.S3)
     self.next_blinds_label = update_font(self.next_blinds_label, FontReSize.S4)
+    self.norm_form.updateFonts(FontReSize.S5)
+    self.hu_form.updateFonts(FontReSize.S5)
 
   def retranslateUi(self):
     _translate = QtCore.QCoreApplication.translate
@@ -246,9 +287,11 @@ class PokerTimerWindow(QMainWindow):
     self.level_label.setText(_translate("MainWindow", "TextLabel"))
     self.pb_prev_level.setText(_translate("MainWindow", "<="))
     self.pb_next_lvl.setText(_translate("MainWindow", "=>"))
-    self.pb_headsup.setText(_translate("MainWindow", "Mode: Normal"))
+    self.pb_headsup.setText(_translate("MainWindow", "Normal"))
     self.pb_reset.setText(_translate("MainWindow", "Reset"))
     self.pb_start_stop.setText(_translate("MainWindow", "Start"))
+    self.norm_form.updateText()
+    self.hu_form.updateText()
 
 
 if __name__ == "__main__":
