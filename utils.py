@@ -251,7 +251,7 @@ class MyPushButton(QPushButton):
   def __init__(self,
                name : str,
                font: QFont = MyFonts.PushButton,
-               unclicked_style_sheet: str = "  background-color: rgba(220, 220, 220, 95%); border: 2px solid black;"):
+               unclicked_style_sheet: str = "background-color: rgba(220, 220, 220, 95%); border: 2px solid black;"):
     super().__init__()
     sizePolicy = QSizePolicy(QSizePolicy.Preferred, QSizePolicy.Preferred)
     sizePolicy.setHorizontalStretch(0)

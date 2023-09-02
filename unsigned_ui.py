@@ -105,16 +105,16 @@ class PokerTimerWindow(QMainWindow):
 
     # Add Widgets to Layout
     # Upper section
-    self.gridLayout.addWidget(self.timer_label      , 0, 2, 3, 3)
+    self.gridLayout.addWidget(self.timer_label      , 0, 2, 4, 3)
     self.gridLayout.addWidget(self.blinds_label     , 0, 0, 3, 2)
     self.gridLayout.addWidget(self.level_label      , 0, 0, 1, 2)
     self.gridLayout.addWidget(self.next_blinds_label, 2, 0, 1, 2)
     # Lower section
-    self.gridLayout.addWidget(self.lvl_timer_control, 3, 2, 1, 3)
-    self.gridLayout.addWidget(self.pb_reset         , 3, 1, 1, 1)
+    self.gridLayout.addWidget(self.lvl_timer_control, 4, 2, 1, 3)
+    self.gridLayout.addWidget(self.pb_reset         , 4, 0, 1, 1)
     self.gridLayout.addWidget(self.pb_headsup       , 4, 1, 1, 1)
     self.gridLayout.addWidget(self.norm_form        , 3, 0, 1, 1)
-    self.gridLayout.addWidget(self.hu_form          , 4, 0, 1, 1)
+    self.gridLayout.addWidget(self.hu_form          , 3, 1, 1, 1)
 
     self.retranslateUi() # change labels
 
@@ -184,8 +184,8 @@ class PokerTimerWindow(QMainWindow):
     print_comma = self.vanishing_comma(self.sec_cnt)
     self.timer_label.setText(f"{m}{print_comma}{s:02d}")
     self.blinds_label.setText(f"{sb}/{bb}")
-    self.next_blinds_label.setText(f"nextB:{nsb}/{nbb}")
-    self.level_label.setText(f"Level {l:02d}")
+    self.next_blinds_label.setText(f"NEXT:{nsb}/{nbb}")
+    self.level_label.setText(f"LEVEL {l:02d}")
 
   def count_time(self):
     self.sec_cnt += self.time_step_ms
