@@ -15,6 +15,9 @@ from PyQt5.QtCore import QSize, QTimer
 from PyQt5.QtWidgets import (QApplication, QGridLayout, QLineEdit, QMainWindow,
                              QWidget)
 
+import time
+import datetime
+
 from utils import *
 
 '''
@@ -51,7 +54,9 @@ class PokerTimerWindow(QMainWindow):
     # Time counters
     self.sec_cnt = 0
     self.time_step_ms = time_step_ms
-    self.timer_running = False
+    self.round_timer_running = False
+    self.total_time = time.time()
+    self.break_time = 0
     # Setup the Window
     self.setMaximumHeight(max_geometry.height())
     self.setMaximumWidth(max_geometry.width())
@@ -75,7 +80,10 @@ class PokerTimerWindow(QMainWindow):
     self.qfontdb = setupQFontDataBase()
     # QTWidgets
     ## Timer
-    self.timer = QTimer(self.gridLayout)
+    self.round_timer = QTimer(self.gridLayout)
+    self.total_timer = QTimer(self.gridLayout)
+    self.total_timer.start(1000) # each second update
+    self.break_timer = QTimer(self.gridLayout)
 
     ## LineEdit
     self.bb_input_line = MyForm("BB Step",
@@ -85,6 +93,7 @@ class PokerTimerWindow(QMainWindow):
 
     ## Labels
     self.timer_label = MyLabel("Timer", MyFonts.Timer)
+    self.other_timer_labels = TimeStats(self)
     self.level_label = MyLabel("Level", MyFonts.Blinds, border_color="transparent", bg_color="transparent",
                                layout_dir=QtCore.Qt.AlignmentFlag.AlignTop | QtCore.Qt.AlignmentFlag.AlignHCenter)
     self
@@ -99,15 +108,16 @@ class PokerTimerWindow(QMainWindow):
 
     # Add Widgets to Layout
     # Upper section
-    self.gridLayout.addWidget(self.timer_label      , 0, 2, 4, 3)
-    self.gridLayout.addWidget(self.blinds_label     , 0, 0, 3, 2)
-    self.gridLayout.addWidget(self.level_label      , 0, 0, 1, 2)
-    self.gridLayout.addWidget(self.next_blinds_label, 2, 0, 1, 2)
+    self.gridLayout.addWidget(self.timer_label       , 0, 2, 4, 3)
+    self.gridLayout.addWidget(self.other_timer_labels, 3, 2, 1, 3)
+    self.gridLayout.addWidget(self.blinds_label      , 0, 0, 3, 2)
+    self.gridLayout.addWidget(self.level_label       , 0, 0, 1, 2)
+    self.gridLayout.addWidget(self.next_blinds_label , 2, 0, 1, 2)
     # Lower section
-    self.gridLayout.addWidget(self.lvl_timer_control, 4, 2, 1, 3)
-    self.gridLayout.addWidget(self.pb_reset         , 4, 0, 1, 1)
-    self.gridLayout.addWidget(self.pb_headsup       , 4, 1, 1, 1)
-    self.gridLayout.addWidget(self.bb_input_line    , 3, 0, 1, 2)
+    self.gridLayout.addWidget(self.lvl_timer_control , 4, 2, 1, 3)
+    self.gridLayout.addWidget(self.pb_reset          , 4, 0, 1, 1)
+    self.gridLayout.addWidget(self.pb_headsup        , 4, 1, 1, 1)
+    self.gridLayout.addWidget(self.bb_input_line     , 3, 0, 1, 2)
 
     self.retranslateUi() # change labels
 
@@ -119,12 +129,14 @@ class PokerTimerWindow(QMainWindow):
     QtCore.QMetaObject.connectSlotsByName(self)
 
     # Connect widgets to actions
-    self.lvl_timer_control.pb_next_lvl.clicked.connect(self.next_level_button_action) # type: ignore
-    self.lvl_timer_control.pb_prev_level.clicked.connect(self.prev_level_button_action) # type: ignore
-    self.lvl_timer_control.pb_start_stop.clicked.connect(self.start_stop_timer)
-    self.pb_headsup.clicked.connect(self.mode_change_action) # type: ignore
+    self.lvl_timer_control.pb_next_lvl.clicked.connect(self.next_level_button_action)
+    self.lvl_timer_control.pb_prev_level.clicked.connect(self.prev_level_button_action)
+    self.lvl_timer_control.pb_start_stop.clicked.connect(self.start_stop_round_timer)
+    self.pb_headsup.clicked.connect(self.mode_change_action)
     self.pb_reset.clicked.connect(self.reset_button_action)
-    self.timer.timeout.connect(self.updateStats)
+    self.round_timer.timeout.connect(self.updateStats)
+    self.total_timer.timeout.connect(self.update_total_time)
+    self.break_timer.timeout.connect(self.update_break_time)
 
     # Initialize texts
     self.update_texts()
@@ -171,6 +183,20 @@ class PokerTimerWindow(QMainWindow):
       return " "
     return ":"
 
+  def update_break_time(self):
+    if self.break_time == 0:
+      self.break_time = time.time()
+    new_time = time.time()
+    elapsed = round(new_time - self.break_time, 2)
+    time_pprint =  str(datetime.datetime.strftime(datetime.datetime.utcfromtimestamp(elapsed),'%M:%S'))
+    self.other_timer_labels.label_since_stop.setText(f"sinceBreak: {time_pprint}")
+
+  def update_total_time(self):
+    new_time = time.time()
+    elapsed = round(new_time - self.total_time, 2)
+    time_pprint =  str(datetime.datetime.strftime(datetime.datetime.utcfromtimestamp(elapsed),'%H:%M:%S'))
+    self.other_timer_labels.label_total.setText(f"Total: {time_pprint}")
+
   def update_texts(self):
     l, m, s, bb, sb, nbb, nsb = self.current_state._list()
     print_comma = self.vanishing_comma(self.sec_cnt)
@@ -192,20 +218,26 @@ class PokerTimerWindow(QMainWindow):
       self.current_state.counter_increment()
     self.update_texts()
 
-  def start_stop_timer(self):
-    if self.timer_running:
-      self.timer.stop()
+  def start_stop_round_timer(self):
+    if self.round_timer_running:
+      self.round_timer.stop()
+      self.break_time = 0
+      self.break_timer.start(1000)
       self.lvl_timer_control.pb_start_stop.setText("⏯️")
       self.lvl_timer_control.pb_start_stop.setStyleSheet("background-color: rgba(220,220,220,95%);"
                                                          "border: 2px solid black;"
                                                          "color: black;")
     else:
-      self.timer.start(self.time_step_ms)
+      self.round_timer.start(self.time_step_ms)
+      self.break_time = 0
+      self.break_timer.stop()
       self.lvl_timer_control.pb_start_stop.setText("⏯️")
       self.lvl_timer_control.pb_start_stop.setStyleSheet("background-color: rgba(40,40,40,95%);"
                                                          "border: 2px solid black;"
                                                          "color: white;")
-    self.timer_running = not self.timer_running
+    time_pprint =  str(datetime.datetime.strftime(datetime.datetime.utcfromtimestamp(self.break_time),'%M:%S'))
+    self.other_timer_labels.label_since_stop.setText(f"{time_pprint}")
+    self.round_timer_running = not self.round_timer_running
     self.lvl_timer_control.pb_start_stop.repaint()
 
 
@@ -270,6 +302,7 @@ class PokerTimerWindow(QMainWindow):
     self.pb_reset = update_font(self.pb_reset, FontReSize.S3)
     self.next_blinds_label = update_font(self.next_blinds_label, FontReSize.S4)
     self.bb_input_line.updateFonts(FontReSize.S5)
+    self.other_timer_labels.updateFonts(FontReSize.S3)
 
   def retranslateUi(self):
     _translate = QtCore.QCoreApplication.translate

@@ -167,6 +167,26 @@ class MyForm(QWidget):
     self.line_edit.setFont(lineEditFont)
 
 
+class TimeStats(QWidget):
+  def __init__(self, parent: QWidget) -> None:
+    super().__init__(parent)
+    self.label_total = MyLabel("TotalTime", font=MyFonts.Timer,border_color="transparent", bg_color="transparent")
+    self.label_since_stop = MyLabel("SinceStop", font=MyFonts.Timer,border_color="transparent", bg_color="transparent")
+    self.label_since_stop.setText("00:00")
+    self.label_total.setText("00:00:00")
+    self.layout = QHBoxLayout(self)
+    self.layout.addWidget(self.label_total)
+    self.layout.addWidget(self.label_since_stop)
+
+  def updateFonts(self, font_size: int):
+    font = self.label_total.font()
+    font.setPointSize(font_size)
+    self.label_total.setFont(font)
+    font = self.label_since_stop.font()
+    font.setPointSize(font_size)
+    self.label_since_stop.setFont(font)
+
+
 class Level_Timer_Control(QWidget):
   def __init__(self, parent: QWidget) -> None:
     super().__init__(parent)
@@ -177,6 +197,7 @@ class Level_Timer_Control(QWidget):
     self.layout.addWidget(self.pb_prev_level)
     self.layout.addWidget(self.pb_start_stop)
     self.layout.addWidget(self.pb_next_lvl)
+
   def updateFonts(self, font_size: int):
     font = self.pb_prev_level.font()
     font.setPointSize(font_size)
