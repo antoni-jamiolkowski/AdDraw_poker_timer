@@ -70,7 +70,7 @@ class PokerTimerWindow(QMainWindow):
     self.setObjectName("MainWindow")
     self.resize(geometry)
     from pathlib import Path
-    img = Path("dumb.jpg")
+    img = Path("images/bg.jpg")
     self.setStyleSheet("#MainWindow { "
                        f" border-image: url({img.absolute()}) 0 0 0 0 stretch stretch;"
                        "}")
@@ -289,7 +289,7 @@ class PokerTimerWindow(QMainWindow):
       S2 = int(width / dividers[1])
       S3 = int(width / dividers[2])
       S4 = int(width / 30)
-      S5 = int(width / 75)
+      S5 = int(width / 45)
 
     def update_font(obj, font_size):
       # Update font sizes keeping other font parameters correct
