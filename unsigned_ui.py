@@ -92,8 +92,11 @@ class PokerTimerWindow(QMainWindow):
     self.bb_input_line.line_edit.keyReleaseEvent = self.formKeyReleasedAction
 
     ## Labels
-    self.timer_label = MyLabel("Timer", MyFonts.Timer)
-    self.other_timer_labels = TimeStats(self)
+    self.round_timer_label = MyLabel("RoundTimer", MyFonts.Timer)
+    self.break_timer_label = MyLabel("BreakTimer", MyFonts.Timer,border_color="transparent", bg_color="transparent",
+                               layout_dir=QtCore.Qt.AlignmentFlag.AlignBottom | QtCore.Qt.AlignmentFlag.AlignHCenter)
+    self.total_timer_label = MyLabel("TotalTimer", MyFonts.Timer, border_color="transparent", bg_color="transparent",
+                               layout_dir=QtCore.Qt.AlignmentFlag.AlignTop | QtCore.Qt.AlignmentFlag.AlignHCenter)
     self.level_label = MyLabel("Level", MyFonts.Blinds, border_color="transparent", bg_color="transparent",
                                layout_dir=QtCore.Qt.AlignmentFlag.AlignTop | QtCore.Qt.AlignmentFlag.AlignHCenter)
     self
@@ -108,8 +111,9 @@ class PokerTimerWindow(QMainWindow):
 
     # Add Widgets to Layout
     # Upper section
-    self.gridLayout.addWidget(self.timer_label       , 0, 2, 4, 3)
-    self.gridLayout.addWidget(self.other_timer_labels, 3, 2, 1, 3)
+    self.gridLayout.addWidget(self.round_timer_label , 0, 2, 4, 3)
+    self.gridLayout.addWidget(self.break_timer_label , 3, 2, 1, 3)
+    self.gridLayout.addWidget(self.total_timer_label , 0, 2, 1, 3)
     self.gridLayout.addWidget(self.blinds_label      , 0, 0, 3, 2)
     self.gridLayout.addWidget(self.level_label       , 0, 0, 1, 2)
     self.gridLayout.addWidget(self.next_blinds_label , 2, 0, 1, 2)
@@ -189,18 +193,18 @@ class PokerTimerWindow(QMainWindow):
     new_time = time.time()
     elapsed = round(new_time - self.break_time, 2)
     time_pprint =  str(datetime.datetime.strftime(datetime.datetime.utcfromtimestamp(elapsed),'%M:%S'))
-    self.other_timer_labels.label_since_stop.setText(f"sinceBreak: {time_pprint}")
+    self.break_timer_label.setText(f"BREAK {time_pprint}")
 
   def update_total_time(self):
     new_time = time.time()
     elapsed = round(new_time - self.total_time, 2)
     time_pprint =  str(datetime.datetime.strftime(datetime.datetime.utcfromtimestamp(elapsed),'%H:%M:%S'))
-    self.other_timer_labels.label_total.setText(f"Total: {time_pprint}")
+    self.total_timer_label.setText(f"{time_pprint}")
 
   def update_texts(self):
     l, m, s, bb, sb, nbb, nsb = self.current_state._list()
     print_comma = self.vanishing_comma(self.sec_cnt)
-    self.timer_label.setText(f"{m}{print_comma}{s:02d}")
+    self.round_timer_label.setText(f"{m}{print_comma}{s:02d}")
     self.blinds_label.setText(f"{sb}/{bb}")
     self.next_blinds_label.setText(f"NEXT:{nsb}/{nbb}")
     self.level_label.setText(f"LEVEL {l:02d}")
@@ -235,8 +239,8 @@ class PokerTimerWindow(QMainWindow):
       self.lvl_timer_control.pb_start_stop.setStyleSheet("background-color: rgba(40,40,40,95%);"
                                                          "border: 2px solid black;"
                                                          "color: white;")
-    time_pprint =  str(datetime.datetime.strftime(datetime.datetime.utcfromtimestamp(self.break_time),'%M:%S'))
-    self.other_timer_labels.label_since_stop.setText(f"{time_pprint}")
+    # time_pprint =  str(datetime.datetime.strftime(datetime.datetime.utcfromtimestamp(self.break_time),'%M:%S'))
+    self.break_timer_label.setText(f"")#{time_pprint}")
     self.round_timer_running = not self.round_timer_running
     self.lvl_timer_control.pb_start_stop.repaint()
 
@@ -294,7 +298,9 @@ class PokerTimerWindow(QMainWindow):
       obj.setFont(font)
       return obj
 
-    self.timer_label = update_font(self.timer_label, FontReSize.S1)
+    self.round_timer_label = update_font(self.round_timer_label, FontReSize.S1)
+    self.break_timer_label = update_font(self.break_timer_label, FontReSize.S2)
+    self.total_timer_label = update_font(self.total_timer_label, FontReSize.S3)
     self.blinds_label = update_font(self.blinds_label, FontReSize.S2)
     self.level_label = update_font(self.level_label, FontReSize.S3)
     self.lvl_timer_control.updateFonts(FontReSize.S3)
@@ -302,12 +308,11 @@ class PokerTimerWindow(QMainWindow):
     self.pb_reset = update_font(self.pb_reset, FontReSize.S3)
     self.next_blinds_label = update_font(self.next_blinds_label, FontReSize.S4)
     self.bb_input_line.updateFonts(FontReSize.S5)
-    self.other_timer_labels.updateFonts(FontReSize.S3)
 
   def retranslateUi(self):
     _translate = QtCore.QCoreApplication.translate
     self.setWindowTitle(_translate("MainWindow", "PokerTimer"))
-    self.timer_label.setText(_translate("MainWindow", "TextLabel"))
+    self.round_timer_label.setText(_translate("MainWindow", "TextLabel"))
     self.blinds_label.setText(_translate("MainWindow", "TextLabel"))
     self.next_blinds_label.setText(_translate("MainWindow", "TextLabel"))
     self.level_label.setText(_translate("MainWindow", "TextLabel"))
@@ -316,6 +321,7 @@ class PokerTimerWindow(QMainWindow):
     self.pb_headsup.setText(_translate("MainWindow", "Normal"))
     self.pb_reset.setText(_translate("MainWindow", "Reset"))
     self.lvl_timer_control.pb_start_stop.setText(_translate("MainWindow", "⏯️"))
+    self.total_timer_label.setText(_translate("MainWindow", "00:00:00"))
     self.bb_input_line.updateText()
 
 
