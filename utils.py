@@ -195,7 +195,6 @@ class MyQLineEdit(QLineEdit):
     super().__init__()
     self.value = value
     self.setText(f"{value}")
-    self.setLayoutDirection(QtCore.Qt.LeftToRight)
     self.setSizeIncrement(QtCore.QSize(1, 1))
     self.setFont(font)
     self.setLayoutDirection(QtCore.Qt.LeftToRight)
