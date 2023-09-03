@@ -15,16 +15,19 @@ class PokerTimerWindow(QMainWindow):
                max_geometry : QSize = WindowGeometry.UHD.value,
                level_period : list[int] = [10,0],
                linear_bb_step: int = 100,
-               bb_scale_f: float = 1.1,
+               bb_scale_f: float = 1.25,
                lvl_n : int = 10,
-               chip_increment : int = 50,
-               switch_lvl_idx : int = 2,
+               switch_lvl_idx : int = 5,
+               chip_increment : int = 25,
                time_step_ms : int = 10
                ):
     super().__init__()
     # POKER
     self.config = PokerConfig()
     self.config.SCALING_FACTOR = bb_scale_f
+    self.config.MIN_SCALE_FACTOR = 1.2
+    self.config.MAX_SCALE_FACTOR = 1.6
+    self.config.SCALE_FACTOR_STEP = 0.05
     self.config.LINEAR_BB_STEP = linear_bb_step
     self.config.CHIP_INCREMENT = chip_increment
     self.config.MIN_LINEAR_BB_STEP = chip_increment * 2

@@ -12,15 +12,10 @@ from PyQt5.QtWidgets import (QHBoxLayout, QLabel, QLineEdit, QMessageBox,
 
 
 @unique
-class PokerMode(IntEnum):
-  NORMAL = 0
-  HEADSUP = 1
-
-
-@unique
 class WindowGeometry(Enum):
   UHD = QSize(3840, 2160)
   FHD = QSize(1920, 1080)
+  SETTINGS = QSize(1440,760)
   VGA = QSize(640, 480)
   QVGA = QSize(320, 240)
 
@@ -41,7 +36,6 @@ class MyTime:
     self.m = m
     self.s = s
 
-  # @staticmethod
   def _list(self):
     return list((self.m, self.s))
 
@@ -59,6 +53,9 @@ class PokerConfig:
   LEVEL_PERIOD : MyTime = MyTime(-1,-1)
   MAX_LINEAR_BB_STEP: int = CHIP_INCREMENT*2*10
   MIN_LINEAR_BB_STEP: int = CHIP_INCREMENT*2
+  MAX_SCALE_FACTOR: float = -1
+  MIN_SCALE_FACTOR: float = -1
+  SCALE_FACTOR_STEP: float = -1
 
 
 Family = FontFamilies.MONOFONTO.value
@@ -214,7 +211,7 @@ class MyQLineEdit(QLineEdit):
     self.setSizeIncrement(QtCore.QSize(1, 1))
     self.setFont(font)
     self.setLayoutDirection(QtCore.Qt.LeftToRight)
-    self.setAutoFillBackground(False)
+    self.setAutoFillBackground(True)
     sizePolicy = QSizePolicy(QSizePolicy.Preferred, QSizePolicy.Preferred)
     sizePolicy.setHorizontalStretch(0)
     sizePolicy.setVerticalStretch(0)
@@ -228,11 +225,13 @@ class MyQLineEdit(QLineEdit):
     self.setText(f"{self.value}")
 
   def mousePressEvent(self, a0) -> None:
-    self.setText("")
+    if self.isEnabled():
+      self.setText("")
     return super().mousePressEvent(a0)
 
   def leaveEvent(self, a0) -> None:
-    self.updateText()
+    if self.isEnabled():
+      self.updateText()
     return super().leaveEvent(a0)
 
 
@@ -311,21 +310,21 @@ class MyPushButton(QPushButton):
       return super().mousePressEvent(e)
 
 
-def round_to_smallest_chip_increment(x: int, smallest_chip_increment: int = 50):
-  min = x // smallest_chip_increment
-  min_val = min * smallest_chip_increment
-  max_val = (min + 1) * smallest_chip_increment
+def round_to_smallest_chip_increment(x: int, smallest_bb_increment: int = 50):
+  min = x // smallest_bb_increment
+  min_val = min * smallest_bb_increment
+  max_val = (min + 1) * smallest_bb_increment
   if (x - min_val)  < (max_val - x) and min_val > 0:
     return min_val
   return max_val
 
 
-def gen_func(start_val, length, scaling_factor=None, func=None, chip_inc: int = 50):
+def gen_func(start_val, length, scaling_factor=None, func=None, bb_inc: int = 50):
   last_x = start_val
   for x in range(length):
     new_val = func(last_x, x if not scaling_factor else scaling_factor)
     if scaling_factor:
-      yield round_to_smallest_chip_increment(last_x, smallest_chip_increment=chip_inc)
+      yield round_to_smallest_chip_increment(last_x, smallest_bb_increment=bb_inc)
       last_x = new_val
     else:
       yield new_val
@@ -365,6 +364,7 @@ class MySlider(QWidget):
     self.slider.setSingleStep(int(step))
 
     self.line_edit = MyQLineEdit(init_val)
+    self.line_edit.setDisabled(True)
     self.line_edit.setText(str(init_text))
 
     self.label = MyLabel("val", MyFonts.Blinds)
@@ -383,18 +383,19 @@ class SettingsWindow(QWidget):
     self.calculate_plots()
     self.graphWidget = pg.PlotWidget()
 
-    lowest_scaling_factor = int(1.1 * 10)
-    max_scaling_factor = int(1.5 * 10)
-    step = int(0.1 * 10)
-    self.scale_slider = MySlider(name="SF",
-                                 init_val=int(self.config.SCALING_FACTOR * 10),
+
+    self.scale_factor_scale = int(1 / self.config.SCALE_FACTOR_STEP)
+    lowest_scaling_factor = int(self.config.MIN_SCALE_FACTOR * self.scale_factor_scale)
+    max_scaling_factor = int(self.config.MAX_SCALE_FACTOR * self.scale_factor_scale)
+    self.scale_slider = MySlider(name="ScaleF    ",
+                                 init_val=int(self.config.SCALING_FACTOR * self.scale_factor_scale),
                                  init_text=self.config.SCALING_FACTOR,
                                  range_low=lowest_scaling_factor,
                                  range_high=max_scaling_factor,
-                                 step = step)
+                                 step = 1)
     self.scale_slider.slider.valueChanged[int].connect(self.changeScalingFactorValue)
 
-    self.switch_lvl_idx_slider = MySlider(name="SP",
+    self.switch_lvl_idx_slider = MySlider(name="SwitchLvl_ID",
                                           init_val=self.config.SWITCH_LVL_IDX,
                                           init_text=self.config.SWITCH_LVL_IDX,
                                           range_low=1,
@@ -402,18 +403,18 @@ class SettingsWindow(QWidget):
                                           step=1)
     self.switch_lvl_idx_slider.slider.valueChanged[int].connect(self.changeSwitchingPointValue)
 
-    linear_bb_slider_step = self.config.MIN_LINEAR_BB_STEP
-    min_start_val = linear_bb_slider_step
+    self.lin_bb_step_scale = self.config.MIN_LINEAR_BB_STEP
+    min_start_val = self.lin_bb_step_scale
     max_start_val = self.config.MAX_LINEAR_BB_STEP
-    self.lin_bb_step_slider = MySlider(name="SV",
-                                       init_val=self.config.LINEAR_BB_STEP//linear_bb_slider_step,
+    self.lin_bb_step_slider = MySlider(name="LinBBStep",
+                                       init_val=self.config.LINEAR_BB_STEP//self.lin_bb_step_scale,
                                        init_text= self.config.LINEAR_BB_STEP,
-                                       range_low=min_start_val//linear_bb_slider_step,
-                                       range_high=max_start_val//linear_bb_slider_step,
-                                       step=linear_bb_slider_step//linear_bb_slider_step)
+                                       range_low=min_start_val//self.lin_bb_step_scale,
+                                       range_high=max_start_val//self.lin_bb_step_scale,
+                                       step=1)
     self.lin_bb_step_slider.slider.valueChanged[int].connect(self.changeLinearBBStepValue)
 
-    self.lvl_n_slider = MySlider(name="LVL_N",
+    self.lvl_n_slider = MySlider(name="Lvl_N     ",
                                   init_val=self.config.LVL_N,
                                   init_text=self.config.LVL_N,
                                   range_low=2,
@@ -426,18 +427,19 @@ class SettingsWindow(QWidget):
     self.apply_and_close_button = MyPushButton("Apply!", "This button sets GameConfig based on slider values")
     self.apply_and_close_button.setText("Apply&Close!")
 
-    self.resize(WindowGeometry.VGA.value)
-    self.layout = QVBoxLayout(self)
+    self.resize(WindowGeometry.SETTINGS.value)
+    self.layout = QHBoxLayout(self)
     self.layout.addWidget(self.graphWidget)
-    self.layout.addWidget(self.scale_slider)
-    self.layout.addWidget(self.switch_lvl_idx_slider)
-    self.layout.addWidget(self.lin_bb_step_slider)
-    self.layout.addWidget(self.lvl_n_slider)
-
+    self.layoutM = QVBoxLayout(self)
+    self.layoutM.addWidget(self.scale_slider)
+    self.layoutM.addWidget(self.switch_lvl_idx_slider)
+    self.layoutM.addWidget(self.lin_bb_step_slider)
+    self.layoutM.addWidget(self.lvl_n_slider)
     self.layoutX = QHBoxLayout(self)
     self.layoutX.addWidget(self.apply_button)
     self.layoutX.addWidget(self.apply_and_close_button)
-    self.layout.addLayout(self.layoutX)
+    self.layoutM.addLayout(self.layoutX)
+    self.layout.addLayout(self.layoutM)
 
     pen = pg.mkPen(width=10, style=QtCore.Qt.DashDotDotLine)
     self.data_line_s = self.graphWidget.plot(self.x, self.scaled, name="Scaled", pen=pen, symbol="o", symbolSize=30, symbolBrush=('b'))
@@ -451,7 +453,7 @@ class SettingsWindow(QWidget):
     self.graphWidget.setMouseEnabled(False,False)
     self.graphWidget.showGrid(x=True, y=True)
     self.graphWidget.setBackground('w')
-
+    self.setStyleSheet(f" background-color: rgb(120,120,120);")
 
   def updatePlots(self):
     self.data_line_y.setData(self.x, self.y)  # Update the data.
@@ -460,7 +462,7 @@ class SettingsWindow(QWidget):
     self.data_line_sw.setData([self.config.SWITCH_LVL_IDX], [self.y[self.config.SWITCH_LVL_IDX]])
 
   def changeScalingFactorValue(self, a0):
-    self.config.SCALING_FACTOR = a0 / 10
+    self.config.SCALING_FACTOR = a0 / self.scale_factor_scale
     self.calculate_plots()
     self.scale_slider.line_edit.updateText(self.config.SCALING_FACTOR)
     self.updatePlots()
@@ -472,9 +474,9 @@ class SettingsWindow(QWidget):
     self.updatePlots()
 
   def changeLinearBBStepValue(self, a0):
-    self.config.LINEAR_BB_STEP = int(a0) * 50
+    self.config.LINEAR_BB_STEP = int(a0) * self.lin_bb_step_scale
     self.calculate_plots()
-    self.lin_bb_step_slider.line_edit.updateText(a0*50)
+    self.lin_bb_step_slider.line_edit.updateText(self.config.LINEAR_BB_STEP)
     self.updatePlots()
 
   def changeLvlNumberValue(self, a0):
@@ -493,11 +495,11 @@ class SettingsWindow(QWidget):
     switch_lvl_idx = self.config.SWITCH_LVL_IDX
     scale_f = self.config.SCALING_FACTOR
     lin_bb_step = self.config.LINEAR_BB_STEP
-    generator1 = gen_func(lin_bb_step, lvl_n, None, scale_linear, chip_inc=self.config.CHIP_INCREMENT)
+    generator1 = gen_func(lin_bb_step, lvl_n, None, scale_linear, bb_inc=self.config.MIN_LINEAR_BB_STEP)
     linear = list(generator1)
     scale_start_val = get_scale_value_level_0(linear[switch_lvl_idx], switch_lvl_idx, 1/scale_f)
-    generator2 = gen_func(linear[switch_lvl_idx], lvl_n, scale_f, scale_by_factor, chip_inc=self.config.CHIP_INCREMENT)
-    generator3 = gen_func(scale_start_val, lvl_n, scale_f, scale_by_factor, chip_inc=self.config.CHIP_INCREMENT)
+    generator2 = gen_func(linear[switch_lvl_idx], lvl_n, scale_f, scale_by_factor, bb_inc=self.config.MIN_LINEAR_BB_STEP)
+    generator3 = gen_func(scale_start_val, lvl_n, scale_f, scale_by_factor, bb_inc=self.config.MIN_LINEAR_BB_STEP)
     scaled = list(generator2)
     scaled_rev = list(generator3)
     y = []
