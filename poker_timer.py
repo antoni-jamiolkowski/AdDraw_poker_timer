@@ -70,7 +70,9 @@ class PokerTimerWindow(QMainWindow):
     ## LineEdit
     self.level_period_input = MyForm("Period",
                                      font = MyFonts.Blinds,
-                                     value=self.config.LEVEL_PERIOD)
+                                     value=self.config.LEVEL_PERIOD,
+                                     whatsThis="input to change level period, applied on Enter,"
+                                               "won't change the timer value shown during active level")
     self.level_period_input.line_edit.keyReleaseEvent = self.formKeyReleasedAction
 
     ## Labels

@@ -147,10 +147,12 @@ class MyFonts:
 
 
 class MyForm(QWidget):
-  def __init__(self, name, font, value):
+  def __init__(self, name, font, value, whatsThis ="a Form"):
     super().__init__()
     self.name = name
+    self.setWhatsThis(whatsThis)
     self.label = MyLabel(name, font)
+    self.label.mousePressEvent = self.labelMousePressEvent
     self.line_edit = MyQLineTimeEdit(value)
     self.layout = QHBoxLayout(self)
     self.layout.addWidget(self.label    )
@@ -168,6 +170,16 @@ class MyForm(QWidget):
     lineEditFont.setPointSize(font_size)
     self.line_edit.setFont(lineEditFont)
 
+  def labelMousePressEvent(self, e: QMouseEvent) -> None:
+    RIGHT_CLICK = 2
+    if e.button() == RIGHT_CLICK:
+      x = QMessageBox(self)
+      x.setWindowTitle("Info")
+      x.setText(self.whatsThis())
+      x.setIcon(QMessageBox.Information)
+      x.exec()
+    else:
+      return super().mousePressEvent(e)
 
 class Level_Timer_Control(QWidget):
   def __init__(self, parent: QWidget) -> None:
