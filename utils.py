@@ -151,7 +151,7 @@ class MyForm(QWidget):
     super().__init__()
     self.name = name
     self.label = MyLabel(name, font)
-    self.line_edit = MyQLineEdit(value)
+    self.line_edit = MyQLineTimeEdit(value)
     self.layout = QHBoxLayout(self)
     self.layout.addWidget(self.label    )
     self.layout.addWidget(self.line_edit)
@@ -220,6 +220,18 @@ class MyQLineEdit(QLineEdit):
   def leaveEvent(self, a0) -> None:
     self.updateText()
     return super().leaveEvent(a0)
+
+
+class MyQLineTimeEdit(MyQLineEdit):
+  def __init__(self, value: MyTime):
+    super().__init__(0)
+    self.value = value
+    self.setText(":".join([str(x) for x in self.value._list()]))
+
+  def updateText(self, value: Optional[MyTime] = None):
+    if value is not None:
+      self.value = value
+    self.setText(":".join([str(x) for x in self.value._list()]))
 
 
 class MyLabel(QLabel):

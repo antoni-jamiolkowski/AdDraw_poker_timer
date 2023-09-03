@@ -2,7 +2,7 @@ import datetime
 import time
 from typing import Sequence
 
-from PyQt5 import QtCore
+from PyQt5 import QtCore, QtGui
 from PyQt5.QtCore import QSize, QTimer
 from PyQt5.QtWidgets import QApplication, QGridLayout, QMainWindow, QWidget
 
@@ -70,7 +70,7 @@ class PokerTimerWindow(QMainWindow):
     ## LineEdit
     self.level_period_input = MyForm("Period",
                                      font = MyFonts.Blinds,
-                                     value=self.current_state.current_level)
+                                     value=self.config.LEVEL_PERIOD)
     self.level_period_input.line_edit.keyReleaseEvent = self.formKeyReleasedAction
 
     ## Labels
@@ -134,26 +134,28 @@ class PokerTimerWindow(QMainWindow):
     self.updateFonts()
 
   # KeyReleaseEvent
-  def formKeyReleasedAction(self, *args):
-    def get_time(string):
-      if ":" in string:
-        str_m, str_s = string.split(":")
-        if str_s is not None:
-          return MyTime(int(str_m), int(str_s))
-        return MyTime(int(str_m), 0)
-      else:
-        try:
-          m = int(string)
-          return MyTime(m, 0)
-        except ValueError:
-          print("WRONG!")
-          return self.config.LEVEL_PERIOD
-
-    time = get_time(self.level_period_input.line_edit.displayText())
-    self.config.LEVEL_PERIOD = time
-    self.level_period_input.line_edit.value = ":".join([str(x) for x in time._list()])
-    self.current_state.update_config(self.config, update_counters=not self.round_timer_running)
-    self.update_texts()
+  def formKeyReleasedAction(self, k :QtGui.QKeyEvent):
+    ENTER = 16777220 # taken from k.key() after pressing ENTER
+    if k.key() == ENTER:
+      def get_time(string):
+            if ":" in string:
+              str_m, str_s = string.split(":")
+              if str_s is not None:
+                return MyTime(int(str_m), int(str_s))
+              return MyTime(int(str_m), 0)
+            else:
+              try:
+                m = int(string)
+                return MyTime(m, 0)
+              except ValueError:
+                print("WRONG!")
+                return self.config.LEVEL_PERIOD
+      time = get_time(self.level_period_input.line_edit.displayText())
+      self.level_period_input.line_edit.value = time
+      self.config.LEVEL_PERIOD = time
+      self.current_state.update_config(self.config, update_counters=not self.round_timer_running)
+      self.level_period_input.updateText()
+      self.update_texts()
 
   def apply_config(self):
     self.current_state.update_config(self.config_window.config)
@@ -229,7 +231,6 @@ class PokerTimerWindow(QMainWindow):
                                                          "color: white;")
     self.break_timer_label.setText(f"")
     self.round_timer_running = not self.round_timer_running
-    print(self.round_timer_running)
     self.lvl_timer_control.pb_start_stop.repaint()
 
   # Actions
