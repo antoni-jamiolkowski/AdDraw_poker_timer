@@ -27,6 +27,8 @@ class PokerTimerWindow(QMainWindow):
     self.config.SCALING_FACTOR = bb_scale_f
     self.config.LINEAR_BB_STEP = linear_bb_step
     self.config.CHIP_INCREMENT = chip_increment
+    self.config.MIN_LINEAR_BB_STEP = chip_increment * 2
+    self.config.MAX_LINEAR_BB_STEP = chip_increment * 2 * 10
     self.config.LVL_N = lvl_n
     self.config.SWITCH_LVL_IDX = switch_lvl_idx
     self.config.LEVEL_PERIOD = MyTime(*level_period)
