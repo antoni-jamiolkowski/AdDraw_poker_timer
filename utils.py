@@ -80,6 +80,8 @@ class PokerGameState:
   def update_blinds(self) -> None:
     self.big_blind = self.config.BIG_BLIND_VALUES[self.current_level-1]
     self.small_blind = int(self.big_blind / 2)
+    if self.small_blind < self.config.CHIP_INCREMENT:
+      raise ValueError(f"Small Blind cannot be smaller than chip increment sb: {self.small_blind}, chip_inc: {self.config.CHIP_INCREMENT}")
     if (self.current_level != len(self.config.BIG_BLIND_VALUES)-1):
       self.nxt_big_blind = self.config.BIG_BLIND_VALUES[self.current_level]
       self.nxt_small_blind = int(self.nxt_big_blind / 2)

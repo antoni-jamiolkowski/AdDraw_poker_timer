@@ -18,7 +18,7 @@ class PokerTimerWindow(QMainWindow):
                bb_scale_f: float = 1.25,
                lvl_n : int = 10,
                switch_lvl_idx : int = 5,
-               chip_increment : int = 25,
+               chip_increment : int = 100,
                time_step_ms : int = 10
                ):
     super().__init__()
@@ -28,7 +28,7 @@ class PokerTimerWindow(QMainWindow):
     self.config.MIN_SCALE_FACTOR = 1.2
     self.config.MAX_SCALE_FACTOR = 1.6
     self.config.SCALE_FACTOR_STEP = 0.05
-    self.config.LINEAR_BB_STEP = linear_bb_step
+    self.config.LINEAR_BB_STEP = linear_bb_step if linear_bb_step > chip_increment else chip_increment * 2
     self.config.CHIP_INCREMENT = chip_increment
     self.config.MIN_LINEAR_BB_STEP = chip_increment * 2
     self.config.MAX_LINEAR_BB_STEP = chip_increment * 2 * 10
