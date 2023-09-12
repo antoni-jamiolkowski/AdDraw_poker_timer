@@ -67,7 +67,7 @@ class PokerGameState:
   def __init__(self,
                config: PokerConfig
                ):
-    self.current_level = 0
+    self.current_level = 1
     self.update_config(config)
 
   def update_config(self, config: PokerConfig, update_counters: bool = True):
@@ -78,10 +78,10 @@ class PokerGameState:
     self.update_blinds()
 
   def update_blinds(self) -> None:
-    self.big_blind = self.config.BIG_BLIND_VALUES[self.current_level]
+    self.big_blind = self.config.BIG_BLIND_VALUES[self.current_level-1]
     self.small_blind = int(self.big_blind / 2)
     if (self.current_level != len(self.config.BIG_BLIND_VALUES)-1):
-      self.nxt_big_blind = self.config.BIG_BLIND_VALUES[self.current_level+1]
+      self.nxt_big_blind = self.config.BIG_BLIND_VALUES[self.current_level]
       self.nxt_small_blind = int(self.nxt_big_blind / 2)
       return
     # If current level is the last one, next blinds are not available
@@ -101,7 +101,8 @@ class PokerGameState:
     self.update_blinds()
 
   def nxt_level(self):
-    self.current_level += 1
+    if self.current_level != self.config.LVL_N-1:
+      self.current_level += 1
     self.minute = self.config.LEVEL_PERIOD.m
     self.second = self.config.LEVEL_PERIOD.s
     self.update_blinds()
