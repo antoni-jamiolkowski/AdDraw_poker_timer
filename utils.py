@@ -1,3 +1,4 @@
+from dataclasses import dataclass
 from enum import Enum, IntEnum, unique
 from typing import Optional
 
@@ -42,14 +43,14 @@ class MyTime:
   def _arr(self):
     return asarray([self.m, self.s])
 
-
+@dataclass
 class PokerConfig:
   LVL_N : int = -1 # Number of Levels in the PokerGame
   LINEAR_BB_STEP : int = -1 # BigBlind value to increase the BB value by every Level
   SWITCH_LVL_IDX : int = -1 # After which level Blinds should switch to scaling by scaling_factor
   SCALING_FACTOR : int = -1 # scaling factor to scale the blinds by after Switch level
   CHIP_INCREMENT : int = -1 # Smallest difference between chips
-  BIG_BLIND_VALUES : list = [] # BB Values for every level of the game
+  BIG_BLIND_VALUES : any = -1 # BB Values for every level of the game
   LEVEL_PERIOD : MyTime = MyTime(-1,-1)
   MAX_LINEAR_BB_STEP: int = CHIP_INCREMENT*2*10
   MIN_LINEAR_BB_STEP: int = CHIP_INCREMENT*2
@@ -379,6 +380,41 @@ class MySlider(QWidget):
     self.layout.addWidget(self.slider)
 
 class SettingsWindow(QWidget):
+  def update_config(self, config: PokerConfig):
+    self.config = config
+    self.x = list(range(config.LVL_N))
+    self.calculate_plots()
+
+    self.scale_factor_scale = int(1 / self.config.SCALE_FACTOR_STEP)
+    lowest_scaling_factor = int(self.config.MIN_SCALE_FACTOR * self.scale_factor_scale)
+    max_scaling_factor = int(self.config.MAX_SCALE_FACTOR * self.scale_factor_scale)
+
+    self.scale_slider.slider.setMaximum(int(max_scaling_factor))
+    self.scale_slider.slider.setMinimum(int(lowest_scaling_factor))
+    self.scale_slider.slider.setValue(int(self.config.SCALING_FACTOR * self.scale_factor_scale))
+    self.scale_slider.line_edit.setText(str(self.config.SCALING_FACTOR))
+
+    self.switch_lvl_idx_slider.slider.setMaximum(self.config.LVL_N)
+    self.switch_lvl_idx_slider.slider.setMinimum(1)
+    self.switch_lvl_idx_slider.slider.setValue(int(self.config.SWITCH_LVL_IDX))
+    self.switch_lvl_idx_slider.line_edit.setText(str(self.config.SWITCH_LVL_IDX))
+
+    self.lin_bb_step_scale = self.config.MIN_LINEAR_BB_STEP
+    min_start_val = self.lin_bb_step_scale
+    max_start_val = self.config.MAX_LINEAR_BB_STEP
+    self.lin_bb_step_slider.slider.setMaximum(max_start_val//self.lin_bb_step_scale)
+    self.lin_bb_step_slider.slider.setMinimum(min_start_val//self.lin_bb_step_scale)
+    self.lin_bb_step_slider.slider.setValue(self.config.LINEAR_BB_STEP//self.lin_bb_step_scale)
+    self.lin_bb_step_slider.line_edit.setText(str(self.config.LINEAR_BB_STEP))
+
+    self.lvl_n_slider.slider.setMaximum(2*self.config.LVL_N)
+    self.lvl_n_slider.slider.setMinimum(2)
+    self.lvl_n_slider.slider.setValue(self.config.LVL_N)
+    self.lvl_n_slider.line_edit.setText(str(self.config.LVL_N))
+
+    self.updatePlots()
+
+
   def __init__(self, config: PokerConfig):
     super().__init__()
     self.config = config

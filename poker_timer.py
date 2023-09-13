@@ -4,10 +4,11 @@ from typing import Sequence
 
 from PyQt5 import QtCore, QtGui
 from PyQt5.QtCore import QSize, QTimer
-from PyQt5.QtWidgets import QApplication, QGridLayout, QMainWindow, QWidget
+from PyQt5.QtWidgets import QApplication, QGridLayout, QMainWindow, QWidget, QFileDialog
 
 from utils import *
 
+import json
 
 class PokerTimerWindow(QMainWindow):
   def __init__(self,
@@ -94,7 +95,14 @@ class PokerTimerWindow(QMainWindow):
                                      layout_dir=QtCore.Qt.AlignmentFlag.AlignBottom | QtCore.Qt.AlignmentFlag.AlignHCenter)
     ## PushButtons
     self.pb_reset = MyPushButton("reset_pb", whats_this="Resets the Level to 1 and timer to round period")
+    self.pb_load_config = MyPushButton("lc_pb", whats_this="Click to load a config from a file")
     self.lvl_timer_control = Level_Timer_Control(self)
+
+    ## QFileDialog
+    self.file_dialog = QFileDialog(self)
+    self.file_dialog.setFileMode(QFileDialog.FileMode.ExistingFiles)
+    self.file_dialog.setNameFilter("File (*.json)")
+    self.file_dialog.accept = self.file_dialog_accept
 
     # Add Widgets to Layout
     # Upper section
@@ -106,8 +114,9 @@ class PokerTimerWindow(QMainWindow):
     self.gridLayout.addWidget(self.next_blinds_label , 2, 0, 1, 2)
     # Lower section
     self.gridLayout.addWidget(self.lvl_timer_control , 4, 2, 1, 3)
-    self.gridLayout.addWidget(self.pb_reset          , 4, 0, 1, 2)
+    self.gridLayout.addWidget(self.pb_reset          , 4, 0, 1, 1)
     self.gridLayout.addWidget(self.level_period_input, 3, 0, 1, 2)
+    self.gridLayout.addWidget(self.pb_load_config    , 4, 1, 1, 1)
 
     self.retranslateUi() # change labels
 
@@ -123,6 +132,7 @@ class PokerTimerWindow(QMainWindow):
     self.lvl_timer_control.pb_prev_level.clicked.connect(self.prev_level_button_action)
     self.lvl_timer_control.pb_start_stop.clicked.connect(self.start_stop_round_timer)
     self.pb_reset.clicked.connect(self.reset_button_action)
+    self.pb_load_config.clicked.connect(self.load_config_from_a_file)
     self.round_timer.timeout.connect(self.updateStats)
     self.total_timer.timeout.connect(self.update_total_time)
     self.break_timer.timeout.connect(self.update_break_time)
@@ -172,6 +182,24 @@ class PokerTimerWindow(QMainWindow):
     self.current_state.update_config(self.config_window.config)
     self.config_window.close()
     self.update_texts()
+
+  def dict_to_config(self, _dict: dict):
+    _dict["LEVEL_PERIOD"] = MyTime(*_dict["LEVEL_PERIOD"])
+    return PokerConfig(**_dict)
+
+  def file_dialog_accept(self):
+    self.file_dialog.close()
+    with open(self.file_dialog.selectedFiles()[0], "r") as f:
+      config = json.load(f)
+    self.config_window.update_config(self.dict_to_config(config))
+    print(self.config_window.config)
+    self.current_state.update_config(self.config_window.config, True)
+    self.level_period_input.line_edit.setText(":".join([str(x) for x in self.current_state.config.LEVEL_PERIOD._list()]))
+    self.level_period_input.line_edit.value = self.current_state.config.LEVEL_PERIOD
+    self.update_texts()
+
+  def load_config_from_a_file(self):
+    self.file_dialog.show()
 
   def showSettings(self, e):
     RIGHT_CLICK = 2
@@ -280,6 +308,7 @@ class PokerTimerWindow(QMainWindow):
     self.level_label = update_font(self.level_label, FontReSize.S3)
     self.lvl_timer_control.updateFonts(FontReSize.S3)
     self.pb_reset = update_font(self.pb_reset, FontReSize.S3)
+    self.pb_load_config = update_font(self.pb_load_config, FontReSize.S3)
     self.next_blinds_label = update_font(self.next_blinds_label, FontReSize.S4)
     self.level_period_input.updateFonts(FontReSize.S5)
 
@@ -293,6 +322,7 @@ class PokerTimerWindow(QMainWindow):
     self.lvl_timer_control.pb_prev_level.setText(_translate("MainWindow", "◀"))
     self.lvl_timer_control.pb_next_lvl.setText(_translate("MainWindow", "▶"))
     self.pb_reset.setText(_translate("MainWindow", "Reset"))
+    self.pb_load_config.setText(_translate("Main", "Config"))
     self.lvl_timer_control.pb_start_stop.setText(_translate("MainWindow", "⏯️"))
     self.total_timer_label.setText(_translate("MainWindow", "00:00:00"))
     self.level_period_input.updateText()
