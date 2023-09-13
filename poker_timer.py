@@ -2,6 +2,8 @@ import datetime
 import time
 from typing import Sequence
 
+from pathlib import Path
+
 from PyQt5 import QtCore, QtGui
 from PyQt5.QtCore import QSize, QTimer
 from PyQt5.QtWidgets import QApplication, QGridLayout, QMainWindow, QWidget, QFileDialog
@@ -20,24 +22,31 @@ class PokerTimerWindow(QMainWindow):
                lvl_n : int = 10,
                switch_lvl_idx : int = 5,
                chip_increment : int = 100,
-               time_step_ms : int = 10
+               time_step_ms : int = 10,
+               config_path: Optional[Path] = None
                ):
     super().__init__()
     # POKER
-    self.config = PokerConfig()
-    self.config.SCALING_FACTOR = bb_scale_f
-    self.config.MIN_SCALE_FACTOR = 1.2
-    self.config.MAX_SCALE_FACTOR = 1.6
-    self.config.SCALE_FACTOR_STEP = 0.05
-    self.config.LINEAR_BB_STEP = linear_bb_step if linear_bb_step > chip_increment else chip_increment * 2
-    self.config.CHIP_INCREMENT = chip_increment
-    self.config.MIN_LINEAR_BB_STEP = chip_increment * 2
-    self.config.MAX_LINEAR_BB_STEP = chip_increment * 2 * 10
-    self.config.LVL_N = lvl_n
-    self.config.SWITCH_LVL_IDX = switch_lvl_idx
-    self.config.LEVEL_PERIOD = MyTime(*level_period)
+    if config_path is not None:
+      if not config_path.exists():
+        raise ValueError(f"Config file {config_path.absolute()} does not exist!")
+      self.config = self.load_config_from_json(config_path)
+    else:
+      self.config = PokerConfig()
+      self.config.SCALING_FACTOR = bb_scale_f
+      self.config.MIN_SCALE_FACTOR = 1.2
+      self.config.MAX_SCALE_FACTOR = 1.6
+      self.config.SCALE_FACTOR_STEP = 0.05
+      self.config.LINEAR_BB_STEP = linear_bb_step if linear_bb_step > chip_increment else chip_increment * 2
+      self.config.CHIP_INCREMENT = chip_increment
+      self.config.MIN_LINEAR_BB_STEP = chip_increment * 2
+      self.config.MAX_LINEAR_BB_STEP = chip_increment * 2 * 10
+      self.config.LVL_N = lvl_n
+      self.config.SWITCH_LVL_IDX = switch_lvl_idx
+      self.config.LEVEL_PERIOD = MyTime(*level_period)
     self.config_window = SettingsWindow(self.config)
-    self.config.BIG_BLIND_VALUES = self.config_window.config.BIG_BLIND_VALUES
+    if self.config.BIG_BLIND_VALUES == [] or self.config.BIG_BLIND_VALUES == -1: # if uninitialized
+      self.config.BIG_BLIND_VALUES = self.config_window.config.BIG_BLIND_VALUES
     self.current_state = PokerGameState(self.config)
     # Time counters
     self.sec_cnt = 0
@@ -183,15 +192,19 @@ class PokerTimerWindow(QMainWindow):
     self.config_window.close()
     self.update_texts()
 
-  def dict_to_config(self, _dict: dict):
-    _dict["LEVEL_PERIOD"] = MyTime(*_dict["LEVEL_PERIOD"])
-    return PokerConfig(**_dict)
+  def load_config_from_json(self, path: Path) -> PokerConfig:
+    def dict_to_config(_dict: dict):
+      _dict["LEVEL_PERIOD"] = MyTime(*_dict["LEVEL_PERIOD"])
+      return PokerConfig(**_dict)
+    with open(path, "r") as f:
+      config = json.load(f)
+    return dict_to_config(config)
 
   def file_dialog_accept(self):
     self.file_dialog.close()
-    with open(self.file_dialog.selectedFiles()[0], "r") as f:
-      config = json.load(f)
-    self.config_window.update_config(self.dict_to_config(config))
+    json_path = self.file_dialog.selectedFiles()[0]
+    config = self.load_config_from_json(json_path)
+    self.config_window.update_config(config)
     print(self.config_window.config)
     self.current_state.update_config(self.config_window.config, True)
     self.level_period_input.line_edit.setText(":".join([str(x) for x in self.current_state.config.LEVEL_PERIOD._list()]))
@@ -334,8 +347,10 @@ if __name__ == "__main__":
   import argparse as argp
   parser = argp.ArgumentParser()
   parser.add_argument("-g", "--geometry", default="VGA", choices=WindowGeometry._member_map_)
+  parser.add_argument("-c", "--config", default=None, type=Path, help="Path to a .json file with PokerConfig")
   args = parser.parse_args()
   geometry = getattr(WindowGeometry, args.geometry)
 
-  ptw = PokerTimerWindow(geometry=geometry.value)
+  ptw = PokerTimerWindow(geometry=geometry.value,
+                         config_path=args.config)
   sys.exit(app.exec_())
