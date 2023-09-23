@@ -1,16 +1,17 @@
 from dataclasses import dataclass
-from enum import Enum, IntEnum, unique
+from enum import Enum, unique
 from typing import Optional
 
-import pyqtgraph as pg
 from numpy import asarray
 from PyQt5 import QtCore
 from PyQt5.QtCore import QSize
 from PyQt5.QtGui import QFont, QFontDatabase, QMouseEvent
-from PyQt5.QtWidgets import (QHBoxLayout, QLabel, QLineEdit, QMessageBox,
-                             QPushButton, QSizePolicy, QSlider, QVBoxLayout,
-                             QWidget)
+from PyQt5.QtWidgets import (QFormLayout, QGridLayout, QHBoxLayout, QLabel,
+                             QLineEdit, QMessageBox, QPushButton, QSizePolicy,
+                             QSlider, QWidget)
 
+from pathlib import Path
+import json
 
 @unique
 class WindowGeometry(Enum):
@@ -22,7 +23,7 @@ class WindowGeometry(Enum):
 
 
 @unique
-class FontFamilies(Enum):
+class MonospacedFontFamilies(Enum):
   ORIGAMI_MOMMY = "ORIGAMI MOMMY"
   MONOFONTO = "Monofonto"
   SPACEMONO = "Monospace"
@@ -30,6 +31,11 @@ class FontFamilies(Enum):
   TLWGMONO = "Tlwg Mono"
   FREEMONO = "FreeMono"
   GOMONO = "Go Mono"
+
+
+@unique
+class FontFamilies(Enum):
+  SPACE_GROT_REG = "SpaceGrotesk"
 
 
 class MyTime:
@@ -42,6 +48,7 @@ class MyTime:
 
   def _arr(self):
     return asarray([self.m, self.s])
+
 
 @dataclass
 class PokerConfig:
@@ -59,9 +66,9 @@ class PokerConfig:
   SCALE_FACTOR_STEP: float = -1
 
 
-Family = FontFamilies.MONOFONTO.value
-Family2 = FontFamilies.MONOFONTO.value
-Family3 = FontFamilies.MONOFONTO.value
+Family =  MonospacedFontFamilies.MONOFONTO.value
+Family2 = MonospacedFontFamilies.MONOFONTO.value
+Family3 = FontFamilies.SPACE_GROT_REG.value
 
 
 class PokerGameState:
@@ -74,22 +81,23 @@ class PokerGameState:
   def update_config(self, config: PokerConfig, update_counters: bool = True):
     self.config = config
     if update_counters:
-      self.minute = config.LEVEL_PERIOD.m
-      self.second = config.LEVEL_PERIOD.s
-    self.update_blinds()
+      self.reset_timer()
 
-  def update_blinds(self) -> None:
-    self.big_blind = self.config.BIG_BLIND_VALUES[self.current_level-1]
-    self.small_blind = int(self.big_blind / 2)
-    if self.small_blind < self.config.CHIP_INCREMENT:
+  def get_state(self):
+    cur_bb = self.config.BIG_BLIND_VALUES[self.current_level-1]
+    cur_sb = int(cur_bb / 2)
+    if cur_sb < self.config.CHIP_INCREMENT:
       raise ValueError(f"Small Blind cannot be smaller than chip increment sb: {self.small_blind}, chip_inc: {self.config.CHIP_INCREMENT}")
     if (self.current_level != len(self.config.BIG_BLIND_VALUES)-1):
-      self.nxt_big_blind = self.config.BIG_BLIND_VALUES[self.current_level]
-      self.nxt_small_blind = int(self.nxt_big_blind / 2)
-      return
-    # If current level is the last one, next blinds are not available
-    self.nxt_big_blind = "N/A"
-    self.nxt_small_blind = "N/A"
+      nxt_bb = self.config.BIG_BLIND_VALUES[self.current_level]
+      nxt_sb = int(nxt_bb / 2)
+    else:
+      nxt_bb = "N/A"
+      nxt_sb = "N/A"
+    return [self.current_level,
+            self.minute, self.second,
+            cur_bb, cur_sb,
+            nxt_bb, nxt_sb]
 
   def counter_increment(self):
     if self.minute == 0 and self.second == 0:
@@ -101,38 +109,30 @@ class PokerGameState:
       self.second = 59
       return
     self.second -= 1
-    self.update_blinds()
 
   def nxt_level(self):
     if self.current_level != self.config.LVL_N-1:
       self.current_level += 1
-    self.minute = self.config.LEVEL_PERIOD.m
-    self.second = self.config.LEVEL_PERIOD.s
-    self.update_blinds()
+    self.reset_timer()
 
   def prev_level(self):
     if self.current_level != 1:
       self.current_level -= 1
-    self.minute = self.config.LEVEL_PERIOD.m
-    self.second = self.config.LEVEL_PERIOD.s
-    self.update_blinds()
+    self.reset_timer()
 
   def reset_level(self):
     self.current_level = 1
+    self.reset_timer()
+
+  def reset_timer(self):
     self.minute = self.config.LEVEL_PERIOD.m
     self.second = self.config.LEVEL_PERIOD.s
-    self.update_blinds()
-
-  def _list(self):
-    return (self.current_level, self.minute, self.second,
-            self.big_blind, self.small_blind,
-            self.nxt_big_blind, self.nxt_small_blind)
-
 
 def setupQFontDataBase():
   qfont_db = QFontDatabase()
   qfont_db.addApplicationFont("./fonts/origami-mommy/origa___.ttf")
   qfont_db.addApplicationFont("./fonts/monofont/monofontorg.otf")
+  qfont_db.addApplicationFont("./fonts/space-grotesk/static/SpaceGrotesk-Bold.ttf")
   return qfont_db
 
 
@@ -150,13 +150,14 @@ class MyFonts:
 
 
 class MyForm(QWidget):
-  def __init__(self, name, font, value, whatsThis ="a Form"):
+  def __init__(self, name, init_text, font, value = None, whatsThis ="a Form",
+               border_width:int = 5, border_color: str = "gold", bgc="white"):
     super().__init__()
     self.name = name
     self.setWhatsThis(whatsThis)
-    self.label = MyLabel(name, font)
+    self.label = MyLabel(name, init_text, font=font, border_width=border_width, border_color=border_color)
     self.label.mousePressEvent = self.labelMousePressEvent
-    self.line_edit = MyQLineTimeEdit(value)
+    self.line_edit = MyQLineEdit(value)
     self.layout = QHBoxLayout(self)
     self.layout.addWidget(self.label    )
     self.layout.addWidget(self.line_edit)
@@ -184,31 +185,18 @@ class MyForm(QWidget):
     else:
       return super().mousePressEvent(e)
 
-class Level_Timer_Control(QWidget):
-  def __init__(self, parent: QWidget) -> None:
-    super().__init__(parent)
-    self.pb_prev_level = MyPushButton("prev_lvl_pb", whats_this="Button that goes to Level-1, cannot go below 1")
-    self.pb_next_lvl = MyPushButton("next_lvl_pb", whats_this="Button that goes to Level+1")
-    self.pb_start_stop = MyPushButton("start_stop_pb", whats_this="Button that starts/stops the timer")
-    self.layout = QHBoxLayout(self)
-    self.layout.addWidget(self.pb_prev_level)
-    self.layout.addWidget(self.pb_start_stop)
-    self.layout.addWidget(self.pb_next_lvl)
 
-  def updateFonts(self, font_size: int):
-    font = self.pb_prev_level.font()
-    font.setPointSize(font_size)
-    self.pb_prev_level.setFont(font)
-    font = self.pb_next_lvl.font()
-    font.setPointSize(font_size)
-    self.pb_next_lvl.setFont(font)
-    font = self.pb_start_stop.font()
-    font.setPointSize(font_size)
-    self.pb_start_stop.setFont(font)
+class MyTimeForm(MyForm):
+  def __init__(self, name, init_text, font, value, whatsThis="a Form", border_color: str = "gold", border_width: int = 5):
+    super().__init__(name, init_text, font, 0, whatsThis, border_width, border_color)
+    self.layout.removeWidget(self.line_edit)
+    self.line_edit = MyQLineTimeEdit(value)
+    self.layout.addWidget(self.line_edit)
 
 
 class MyQLineEdit(QLineEdit):
-  def __init__(self, value, font: MyFonts = MyFonts.Blinds):
+  def __init__(self, value, font: MyFonts = MyFonts.Blinds,
+               bgc = "white"):
     super().__init__()
     self.value = value
     self.setText(f"{value}")
@@ -216,8 +204,9 @@ class MyQLineEdit(QLineEdit):
     self.setFont(font)
     self.setLayoutDirection(QtCore.Qt.LeftToRight)
     self.setAutoFillBackground(True)
+    self.setStyleSheet(f"background-color: {bgc};")
     sizePolicy = QSizePolicy(QSizePolicy.Preferred, QSizePolicy.Preferred)
-    sizePolicy.setHorizontalStretch(0)
+    # sizePolicy.setHorizontalStretch(0)
     sizePolicy.setVerticalStretch(0)
     sizePolicy.setHeightForWidth(self.sizePolicy().hasHeightForWidth())
     self.setSizePolicy(sizePolicy)
@@ -239,6 +228,34 @@ class MyQLineEdit(QLineEdit):
     return super().leaveEvent(a0)
 
 
+def get_std_size_policy(obj) -> QSizePolicy:
+  sizePolicy = QSizePolicy(QSizePolicy.Preferred, QSizePolicy.Preferred)
+  sizePolicy.setHorizontalStretch(0)
+  sizePolicy.setVerticalStretch(0)
+  sizePolicy.setHeightForWidth(obj.sizePolicy().hasHeightForWidth())
+  return sizePolicy
+
+
+def get_fixed_size_policy(): #DUNNO IF THIS WORKS
+  sizePolicy = QSizePolicy(QSizePolicy.Preferred, QSizePolicy.Preferred)
+  return sizePolicy
+
+
+def load_config_from_json(path: Path) -> PokerConfig:
+  def dict_to_config(_dict: dict):
+    _dict["LEVEL_PERIOD"] = MyTime(*_dict["LEVEL_PERIOD"])
+    return PokerConfig(**_dict)
+  with open(path, "r") as f:
+    config = json.load(f)
+  return dict_to_config(config)
+
+
+def dump_config_to_json(config: PokerConfig):
+  cdict = config.__dict__
+  cdict["LEVEL_PERIOD"] = cdict["LEVEL_PERIOD"]._list()
+  return cdict
+
+
 class MyQLineTimeEdit(MyQLineEdit):
   def __init__(self, value: MyTime):
     super().__init__(0)
@@ -254,46 +271,47 @@ class MyQLineTimeEdit(MyQLineEdit):
 class MyLabel(QLabel):
   def __init__(self,
                name: str,
-               font : QFont,
+               init_text: str = "",
+               font : QFont = MyFonts.Blinds,
                layout_dir: QtCore.Qt.AlignmentFlag = QtCore.Qt.AlignmentFlag.AlignCenter,
                autofillbg: bool = True,
                scaled_content: bool = True,
                line_width: int = 2,
                color : str = "white",
                bg_color: str = "rgba(40,40,40,70%)",
-               border_color: str = "gold",
+               border_color: str = "transparent",
+               border_width: int = 5,
                padding: str = "0"):
     super().__init__()
-    self.setSizeIncrement(QtCore.QSize(5, 5))
+    # self.setSizeIncrement(QtCore.QSize(5, 5))
     self.setFont(font)
     self.setLayoutDirection(QtCore.Qt.LeftToRight)
     self.setAutoFillBackground(autofillbg)
     self.setScaledContents(scaled_content)
     self.setAlignment(layout_dir)
     self.setObjectName(name)
+    self.setText(init_text)
     self.setLineWidth(line_width)
     self.setStyleSheet(f"background-color: {bg_color};"
                        f"color: {color};"
-                       f"border: 5px solid {border_color};"
-                       f"border-radius: 20px;"
+                       f"border: {border_width}px solid {border_color};"
+                       f"border-radius: 0;"
                        f"padding: {padding}px")
 
 
 class MyPushButton(QPushButton):
   def __init__(self,
                name : str,
+               text: str = "NULL",
                whats_this :str = "This is a button, DUH",
                font: QFont = MyFonts.PushButton,
                unclicked_style_sheet: str = "border-radius: 0; background-color: rgba(220, 220, 220, 95%); border: 2px solid black;"):
     super().__init__()
-    sizePolicy = QSizePolicy(QSizePolicy.Preferred, QSizePolicy.Preferred)
-    sizePolicy.setHorizontalStretch(0)
-    sizePolicy.setVerticalStretch(0)
-    sizePolicy.setHeightForWidth(self.sizePolicy().hasHeightForWidth())
-    self.setSizePolicy(sizePolicy)
+    self.setSizePolicy(get_std_size_policy(self))
     self.setFont(font)
     self.setWhatsThis(whats_this)
     self.setObjectName(name)
+    self.setText(text)
     self.setStyleSheet("QPushButton {" f"{unclicked_style_sheet}" "}"
                         "QPushButton:pressed{"
                         "  background-color: rgba(40, 40, 40, 95%);"
@@ -358,6 +376,8 @@ class MySlider(QWidget):
                range_high: int = 10,
                step: int = 1):
     super().__init__()
+    layout = QGridLayout()
+    self.setLayout(layout)
     self.slider = QSlider(QtCore.Qt.Horizontal)
     self.slider.setFocusPolicy(QtCore.Qt.StrongFocus)
     self.slider.setTickPosition(QSlider.TicksBothSides)
@@ -366,189 +386,138 @@ class MySlider(QWidget):
     self.slider.setMinimum(int(range_low))
     self.slider.setValue(int(init_val))
     self.slider.setSingleStep(int(step))
+    self.setSizePolicy(get_fixed_size_policy())
+    self.value = init_val
+    self.name = name
+    self.label = MyLabel("label", init_text=f"{name}: {init_text}", font=MyFonts.Blinds)
+    layout.addWidget(self.label, 0, 0, 1, 1)
+    layout.addWidget(self.slider, 0, 2, 1, 3)
 
-    self.line_edit = MyQLineEdit(init_val)
-    self.line_edit.setDisabled(True)
-    self.line_edit.setText(str(init_text))
-
-    self.label = MyLabel("val", MyFonts.Blinds)
-    self.label.setText(f"{name}")
-
-    self.layout = QHBoxLayout(self)
-    self.layout.addWidget(self.label)
-    self.layout.addWidget(self.line_edit)
-    self.layout.addWidget(self.slider)
-
-class SettingsWindow(QWidget):
-  def update_config(self, config: PokerConfig):
-    self.config = config
-    self.x = list(range(config.LVL_N))
-    self.calculate_plots()
-
-    self.scale_factor_scale = int(1 / self.config.SCALE_FACTOR_STEP)
-    lowest_scaling_factor = int(self.config.MIN_SCALE_FACTOR * self.scale_factor_scale)
-    max_scaling_factor = int(self.config.MAX_SCALE_FACTOR * self.scale_factor_scale)
-
-    self.scale_slider.slider.setMaximum(int(max_scaling_factor))
-    self.scale_slider.slider.setMinimum(int(lowest_scaling_factor))
-    self.scale_slider.slider.setValue(int(self.config.SCALING_FACTOR * self.scale_factor_scale))
-    self.scale_slider.line_edit.setText(str(self.config.SCALING_FACTOR))
-
-    self.switch_lvl_idx_slider.slider.setMaximum(self.config.LVL_N)
-    self.switch_lvl_idx_slider.slider.setMinimum(1)
-    self.switch_lvl_idx_slider.slider.setValue(int(self.config.SWITCH_LVL_IDX))
-    self.switch_lvl_idx_slider.line_edit.setText(str(self.config.SWITCH_LVL_IDX))
-
-    self.lin_bb_step_scale = self.config.MIN_LINEAR_BB_STEP
-    min_start_val = self.lin_bb_step_scale
-    max_start_val = self.config.MAX_LINEAR_BB_STEP
-    self.lin_bb_step_slider.slider.setMaximum(max_start_val//self.lin_bb_step_scale)
-    self.lin_bb_step_slider.slider.setMinimum(min_start_val//self.lin_bb_step_scale)
-    self.lin_bb_step_slider.slider.setValue(self.config.LINEAR_BB_STEP//self.lin_bb_step_scale)
-    self.lin_bb_step_slider.line_edit.setText(str(self.config.LINEAR_BB_STEP))
-
-    self.lvl_n_slider.slider.setMaximum(2*self.config.LVL_N)
-    self.lvl_n_slider.slider.setMinimum(2)
-    self.lvl_n_slider.slider.setValue(self.config.LVL_N)
-    self.lvl_n_slider.line_edit.setText(str(self.config.LVL_N))
-
-    self.updatePlots()
+  def updateText(self, val: any = None):
+    if val is not None:
+      self.value = val
+    self.label.setText(f"{self.name}: {str(val)}")
 
 
-  def __init__(self, config: PokerConfig):
+class ConfigWindow(QWidget):
+  def __init__(self, config : PokerConfig) -> None:
     super().__init__()
     self.config = config
-    self.x = list(range(config.LVL_N))
-    self.calculate_plots()
-    self.graphWidget = pg.PlotWidget()
-
-
-    self.scale_factor_scale = int(1 / self.config.SCALE_FACTOR_STEP)
-    lowest_scaling_factor = int(self.config.MIN_SCALE_FACTOR * self.scale_factor_scale)
-    max_scaling_factor = int(self.config.MAX_SCALE_FACTOR * self.scale_factor_scale)
-    self.scale_slider = MySlider(name="ScaleF    ",
-                                 init_val=int(self.config.SCALING_FACTOR * self.scale_factor_scale),
-                                 init_text=self.config.SCALING_FACTOR,
-                                 range_low=lowest_scaling_factor,
-                                 range_high=max_scaling_factor,
-                                 step = 1)
-    self.scale_slider.slider.valueChanged[int].connect(self.changeScalingFactorValue)
-
-    self.switch_lvl_idx_slider = MySlider(name="SwitchLvl_ID",
-                                          init_val=self.config.SWITCH_LVL_IDX,
-                                          init_text=self.config.SWITCH_LVL_IDX,
-                                          range_low=1,
-                                          range_high=self.config.LVL_N,
-                                          step=1)
-    self.switch_lvl_idx_slider.slider.valueChanged[int].connect(self.changeSwitchingPointValue)
-
-    self.lin_bb_step_scale = self.config.MIN_LINEAR_BB_STEP
-    min_start_val = self.lin_bb_step_scale
-    max_start_val = self.config.MAX_LINEAR_BB_STEP
-    self.lin_bb_step_slider = MySlider(name="LinBBStep",
-                                       init_val=self.config.LINEAR_BB_STEP//self.lin_bb_step_scale,
-                                       init_text= self.config.LINEAR_BB_STEP,
-                                       range_low=min_start_val//self.lin_bb_step_scale,
-                                       range_high=max_start_val//self.lin_bb_step_scale,
-                                       step=1)
-    self.lin_bb_step_slider.slider.valueChanged[int].connect(self.changeLinearBBStepValue)
-
-    self.lvl_n_slider = MySlider(name="Lvl_N     ",
-                                  init_val=self.config.LVL_N,
-                                  init_text=self.config.LVL_N,
-                                  range_low=2,
-                                  range_high=2*self.config.LVL_N,
-                                  step=1)
-    self.lvl_n_slider.slider.valueChanged[int].connect(self.changeLvlNumberValue)
-
-    self.apply_button = MyPushButton("Apply!", "This button sets GameConfig based on slider values")
-    self.apply_button.setText("Apply!")
-    self.apply_and_close_button = MyPushButton("Apply!", "This button sets GameConfig based on slider values")
-    self.apply_and_close_button.setText("Apply&Close!")
-
-    self.resize(WindowGeometry.SETTINGS.value)
-    self.layout = QHBoxLayout(self)
-    self.layout.addWidget(self.graphWidget)
-    self.layoutM = QVBoxLayout(self)
-    self.layoutM.addWidget(self.scale_slider)
-    self.layoutM.addWidget(self.switch_lvl_idx_slider)
-    self.layoutM.addWidget(self.lin_bb_step_slider)
-    self.layoutM.addWidget(self.lvl_n_slider)
-    self.layoutX = QHBoxLayout(self)
-    self.layoutX.addWidget(self.apply_button)
-    self.layoutX.addWidget(self.apply_and_close_button)
-    self.layoutM.addLayout(self.layoutX)
-    self.layout.addLayout(self.layoutM)
-
-    pen = pg.mkPen(width=10, style=QtCore.Qt.DashDotDotLine)
-    self.data_line_s = self.graphWidget.plot(self.x, self.scaled, name="Scaled", pen=pen, symbol="o", symbolSize=30, symbolBrush=('b'))
-    self.data_line_l = self.graphWidget.plot(self.x, self.linear, name="Linear", pen=pen, symbol="o", symbolSize=30, symbolBrush=('g'))
-    self.data_line_y = self.graphWidget.plot(self.x, self.y, name="Combined", pen=pen, symbol="o", symbolSize=30, symbolBrush=('r'))
-    self.data_line_sw = self.graphWidget.plot([self.config.SWITCH_LVL_IDX], [self.y[self.config.SWITCH_LVL_IDX]], name="SW_PT", pen=pen, symbol="o", symbolSize=40, symbolBrush=('yellow'))
-    styles = {'color':'r', 'font-size':'20px'}
-    self.graphWidget.setLabel('left', 'BigBlind', **styles)
-    self.graphWidget.setLabel('bottom', 'Level', **styles)
-    self.graphWidget.addLegend()
-    self.graphWidget.setMouseEnabled(False,False)
-    self.graphWidget.showGrid(x=True, y=True)
-    self.graphWidget.setBackground('w')
-    self.setStyleSheet(f" background-color: rgb(120,120,120);")
-
-  def updatePlots(self):
-    self.data_line_y.setData(self.x, self.y)  # Update the data.
-    self.data_line_s.setData(self.x, self.scaled)  # Update the data.
-    self.data_line_l.setData(self.x, self.linear)  # Update the data.
-    self.data_line_sw.setData([self.config.SWITCH_LVL_IDX], [self.y[self.config.SWITCH_LVL_IDX]])
-
-  def changeScalingFactorValue(self, a0):
-    self.config.SCALING_FACTOR = a0 / self.scale_factor_scale
-    self.calculate_plots()
-    self.scale_slider.line_edit.updateText(self.config.SCALING_FACTOR)
-    self.updatePlots()
-
-  def changeSwitchingPointValue(self, a0):
-    self.config.SWITCH_LVL_IDX = int(a0)
-    self.calculate_plots()
-    self.switch_lvl_idx_slider.line_edit.updateText(a0)
-    self.updatePlots()
-
-  def changeLinearBBStepValue(self, a0):
-    self.config.LINEAR_BB_STEP = int(a0) * self.lin_bb_step_scale
-    self.calculate_plots()
-    self.lin_bb_step_slider.line_edit.updateText(self.config.LINEAR_BB_STEP)
-    self.updatePlots()
-
-  def changeLvlNumberValue(self, a0):
-    self.config.LVL_N = int(a0)
-    self.x = list(range(0, self.config.LVL_N, 1))
-    if self.config.SWITCH_LVL_IDX > len(self.x):
-      self.config.SWITCH_LVL_IDX = self.x[-1]
-      self.switch_lvl_idx_slider.line_edit.updateText(self.config.SWITCH_LVL_IDX)
-    self.switch_lvl_idx_slider.slider.setMaximum(self.config.LVL_N-1)
-    self.calculate_plots()
-    self.lvl_n_slider.line_edit.updateText(self.config.LVL_N)
-    self.updatePlots()
-
-  def calculate_plots(self):
-    lvl_n = self.config.LVL_N
-    switch_lvl_idx = self.config.SWITCH_LVL_IDX
-    scale_f = self.config.SCALING_FACTOR
-    lin_bb_step = self.config.LINEAR_BB_STEP
-    generator1 = gen_func(lin_bb_step, lvl_n, None, scale_linear, bb_inc=self.config.MIN_LINEAR_BB_STEP)
-    linear = list(generator1)
-    scale_start_val = get_scale_value_level_0(linear[switch_lvl_idx], switch_lvl_idx, 1/scale_f)
-    generator2 = gen_func(linear[switch_lvl_idx], lvl_n, scale_f, scale_by_factor, bb_inc=self.config.MIN_LINEAR_BB_STEP)
-    generator3 = gen_func(scale_start_val, lvl_n, scale_f, scale_by_factor, bb_inc=self.config.MIN_LINEAR_BB_STEP)
-    scaled = list(generator2)
-    scaled_rev = list(generator3)
-    y = []
-    for _ in range(0, lvl_n):
-      if _ < switch_lvl_idx:
-        y.append(linear[_])
+    self.forms = {}
+    for name, val in self.config.__dict__.items():
+      if type(val) == MyTime:
+        self.forms[name] = MyTimeForm(name, name, MyFonts.Blinds, val, border_color="black", border_width=1)
       else:
-        y.append(scaled[_ - switch_lvl_idx])
+        self.forms[name] = MyForm(name, init_text=name, font=MyFonts.Blinds, value=val, border_color="black", border_width=1)
 
-    self.y = y
-    self.linear = linear
-    self.scaled = scaled_rev
-    self.config.BIG_BLIND_VALUES = [int(x) for x in y]
+    self.layout = QFormLayout(self)
+    for x in self.forms.values():
+      self.layout.addWidget(x)
+
+  def update_config(self, config: PokerConfig):
+    self.config = config
+    for name, val in self.config.__dict__.items():
+      self.forms[name].updateText(val)
+
+
+class MainWindowControls(QWidget):
+  def __init__(self, parent: QWidget):
+    super().__init__(parent=parent)
+    self.setObjectName("MainWindowCtrl")
+    self.buttons = {}
+    self.buttons["Settings"]  = MyPushButton("lc_pb", "Settings", whats_this="Click to load a config from a file")
+    self.buttons["Reset"]     = MyPushButton("reset_pb", "Reset", whats_this="Resets the Level to 1 and timer to round period")
+    self.buttons["PrevLvl"]   = MyPushButton("prev_lvl_pb", "◀", whats_this="Button that goes to Level-1, cannot go below 1")
+    self.buttons["StartStop"] = MyPushButton("start_stop_pb", "⏯️", whats_this="Button that starts/stops the timer")
+    self.buttons["NextLvl"]   = MyPushButton("next_lvl_pb", "▶", whats_this="Button that goes to Level+1")
+    layout = QHBoxLayout(self)
+    for button in self.buttons.values():
+      layout.addWidget(button)
+    self.setAutoFillBackground(True)
+    self.setLayout(layout)
+    self.setStyleSheet("background-color: transparent;") # to make the background not white
+
+  def updateFonts(self, font_size: int):
+    for name, button in self.buttons.items():
+      font = button.font()
+      font.setPointSize(font_size)
+      if name == "StartStop":
+        font.setPointSize(int(font_size * 1.3)) # increase since it's smaller for some reason than < >
+      button.setFont(font)
+
+  def connect_clicks(self, function_list: dict):
+    for name, val in function_list.items():
+      self.buttons[name].clicked.connect(val)
+
+  def start_stop_set(self, state: str):
+    if state == "stop":
+      self.buttons["StartStop"].setStyleSheet("background-color: rgba(220,220,220,95%);"
+                                               "border: 2px solid black;"
+                                               "color: black;")
+    elif (state =="start"):
+      self.buttons["StartStop"].setStyleSheet("background-color: rgba(40,40,40,95%);"
+                                              "border: 2px solid black;"
+                                              "color: white;")
+
+
+
+class MainWindowDisplay(QWidget):
+  def __init__(self, parent: QWidget) -> None:
+    super().__init__(parent)
+    self.setObjectName("MainWindowDisplay")
+    self.labels = {}
+    self.labels["round_timer"] = MyLabel("RoundTimer",
+                                          init_text="0:0",
+                                          font=MyFonts.Timer)
+    self.labels["break_timer"] = MyLabel("BreakTimer",
+                                          init_text="",
+                                          font=MyFonts.Timer,
+                                          border_color="transparent",
+                                          bg_color="transparent",
+                                          layout_dir=QtCore.Qt.AlignmentFlag.AlignBottom | QtCore.Qt.AlignmentFlag.AlignHCenter)
+    self.labels["total_timer"] = MyLabel("TotalTimer",
+                                          init_text="0:00:00",
+                                          font=MyFonts.Timer,
+                                          border_color="transparent",
+                                          bg_color="transparent",
+                                          layout_dir=QtCore.Qt.AlignmentFlag.AlignTop | QtCore.Qt.AlignmentFlag.AlignHCenter)
+    self.labels["level"] = MyLabel("Level",
+                                    border_color="transparent",
+                                    bg_color="transparent",
+                                    layout_dir=QtCore.Qt.AlignmentFlag.AlignTop | QtCore.Qt.AlignmentFlag.AlignHCenter)
+
+    self.labels["blinds"] = MyLabel("CurBlinds")
+    self.labels["next_blinds"] = MyLabel("NxtBlinds",
+                                          border_color="transparent",
+                                          bg_color="transparent",
+                                          layout_dir=QtCore.Qt.AlignmentFlag.AlignBottom | QtCore.Qt.AlignmentFlag.AlignHCenter)
+    layout = QGridLayout(self)
+    self.setLayout(layout)
+    layout.addWidget(self.labels["round_timer"] , 0, 2, 4, 3)
+    layout.addWidget(self.labels["break_timer"] , 3, 2, 1, 3)
+    layout.addWidget(self.labels["total_timer"] , 0, 2, 1, 3)
+    layout.addWidget(self.labels["blinds"]      , 0, 0, 4, 2)
+    layout.addWidget(self.labels["level"]       , 0, 0, 1, 2)
+    layout.addWidget(self.labels["next_blinds"] , 3, 0, 1, 2)
+
+  def update_fonts(self, font_sizes: dict):
+    for name, val in font_sizes.items():
+      name = name.lower()
+      if name in self.labels.keys():
+        font = self.labels[name].font()
+        font.setPointSize(val)
+        self.labels[name].setFont(font)
+
+  def update_texts(self, sec_cnt:int, current_state: PokerGameState):
+    def vanishing_comma(sec_cnt: int,
+                        on_time: int = 100,
+                        position: int = 300):
+      if (sec_cnt > position) and (sec_cnt < (position + on_time)):
+        return " "
+      return ":"
+    l, m, s, bb, sb, nbb, nsb = current_state.get_state()
+    print_comma = vanishing_comma(sec_cnt)
+    self.labels["round_timer"].setText(f"{m}{print_comma}{s:02d}")
+    self.labels["blinds"].setText(f"{sb}/{bb}")
+    self.labels["next_blinds"].setText(f"NEXT:{nsb}/{nbb}")
+    self.labels["level"].setText(f"LEVEL {l:02d}")

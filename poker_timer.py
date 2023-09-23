@@ -1,344 +1,178 @@
 import datetime
 import time
-from typing import Sequence
-
 from pathlib import Path
 
-from PyQt5 import QtCore, QtGui
 from PyQt5.QtCore import QSize, QTimer
-from PyQt5.QtWidgets import QApplication, QGridLayout, QMainWindow, QWidget, QFileDialog
+from PyQt5.QtWidgets import QApplication, QGridLayout, QMainWindow, QWidget
 
+from settings_window import SettingsWindow
 from utils import *
 
-import json
 
-class PokerTimerWindow(QMainWindow):
+class PokerTimer():
   def __init__(self,
                geometry : QSize = WindowGeometry.FHD.value,
                max_geometry : QSize = WindowGeometry.UHD.value,
-               level_period : list[int] = [10,0],
-               linear_bb_step: int = 100,
-               bb_scale_f: float = 1.25,
-               lvl_n : int = 10,
-               switch_lvl_idx : int = 5,
-               chip_increment : int = 100,
                time_step_ms : int = 10,
                config_path: Optional[Path] = None
                ):
-    super().__init__()
-    # POKER
-    if config_path is not None:
-      if not config_path.exists():
-        raise ValueError(f"Config file {config_path.absolute()} does not exist!")
-      self.config = self.load_config_from_json(config_path)
-    else:
-      self.config = PokerConfig()
-      self.config.SCALING_FACTOR = bb_scale_f
-      self.config.MIN_SCALE_FACTOR = 1.2
-      self.config.MAX_SCALE_FACTOR = 1.6
-      self.config.SCALE_FACTOR_STEP = 0.05
-      self.config.LINEAR_BB_STEP = linear_bb_step if linear_bb_step > chip_increment else chip_increment * 2
-      self.config.CHIP_INCREMENT = chip_increment
-      self.config.MIN_LINEAR_BB_STEP = chip_increment * 2
-      self.config.MAX_LINEAR_BB_STEP = chip_increment * 2 * 10
-      self.config.LVL_N = lvl_n
-      self.config.SWITCH_LVL_IDX = switch_lvl_idx
-      self.config.LEVEL_PERIOD = MyTime(*level_period)
-    self.config_window = SettingsWindow(self.config)
-    if self.config.BIG_BLIND_VALUES == [] or self.config.BIG_BLIND_VALUES == -1: # if uninitialized
-      self.config.BIG_BLIND_VALUES = self.config_window.config.BIG_BLIND_VALUES
-    self.current_state = PokerGameState(self.config)
+    config_path = Path("configs/config.json") if config_path is None else config_path
+    if not config_path.exists():
+      raise ValueError(f"Config file {config_path.absolute()} does not exist!")
+    self.settings_window = SettingsWindow(load_config_from_json(config_path))
+    self.main_window = QMainWindow()
+    self.current_state = PokerGameState(self.settings_window.config)
+
     # Time counters
     self.sec_cnt = 0
     self.time_step_ms = time_step_ms
-    self.round_timer_running = False
     self.total_time = time.time()
     self.break_time = 0
-    # Setup the Window
-    self.setMaximumHeight(max_geometry.height())
-    self.setMaximumWidth(max_geometry.width())
+
+    # Constraint the MV, setup and show
+    self.main_window.setMaximumHeight(max_geometry.height())
+    self.main_window.setMaximumWidth(max_geometry.width())
     self.setup_window(geometry)
-    # Show
-    self.show()
+    self.main_window.show()
 
   def setup_window(self,
                    geometry : QSize = WindowGeometry.FHD.value):
     # QT
-    self.setObjectName("MainWindow")
-    self.resize(geometry)
-    from pathlib import Path
-    img = Path("images/bg.jpg")
-    self.setStyleSheet("#MainWindow { "
-                       f" border-image: url({img.absolute()}) 0 0 0 0 stretch stretch;"
-                       "}")
-    self.gridLayout = QGridLayout(self)
-    self.gridLayout.setObjectName("gridLayout")
+    self.main_window.setObjectName("MainWindow")
+    self.main_window.setWindowTitle("Poker Timer")
+    self.main_window.resize(geometry)
+    self.central_widget = QWidget()
+    self.set_background_img()
+    self.main_layout = QGridLayout(self.central_widget)
+    self.main_window.setCentralWidget(self.central_widget)
+
     # QFontDataBase
     self.qfontdb = setupQFontDataBase()
-    # QTWidgets
-    ## Timer
-    self.round_timer = QTimer(self.gridLayout)
-    self.total_timer = QTimer(self.gridLayout)
+    #QTWidgets
+    # Timer
+    self.round_timer = QTimer(self.main_layout)
+    self.total_timer = QTimer(self.main_layout)
     self.total_timer.start(1000) # each second update
-    self.break_timer = QTimer(self.gridLayout)
+    self.break_timer = QTimer(self.main_layout)
 
-    ## LineEdit
-    self.level_period_input = MyForm("Period",
-                                     font = MyFonts.Blinds,
-                                     value=self.config.LEVEL_PERIOD,
-                                     whatsThis="input to change level period, applied on Enter,"
-                                               "won't change the timer value shown during active level")
-    self.level_period_input.line_edit.keyReleaseEvent = self.formKeyReleasedAction
+    self.mv_display = MainWindowDisplay(self.central_widget)
+    self.mv_controls = MainWindowControls(self.central_widget)
 
-    ## Labels
-    self.round_timer_label = MyLabel("RoundTimer", MyFonts.Timer)
-    self.break_timer_label = MyLabel("BreakTimer", MyFonts.Timer,border_color="transparent", bg_color="transparent",
-                               layout_dir=QtCore.Qt.AlignmentFlag.AlignBottom | QtCore.Qt.AlignmentFlag.AlignHCenter)
-    self.total_timer_label = MyLabel("TotalTimer", MyFonts.Timer, border_color="transparent", bg_color="transparent",
-                               layout_dir=QtCore.Qt.AlignmentFlag.AlignTop | QtCore.Qt.AlignmentFlag.AlignHCenter)
-    self.level_label = MyLabel("Level", MyFonts.Blinds, border_color="transparent", bg_color="transparent",
-                               layout_dir=QtCore.Qt.AlignmentFlag.AlignTop | QtCore.Qt.AlignmentFlag.AlignHCenter)
+    # Add Widgets to main window
+    self.main_layout.addWidget(self.mv_controls, 4, 0, 1, 5)
+    self.main_layout.addWidget(self.mv_display, 0, 0, 4, 5)
 
-    self.blinds_label = MyLabel("CurBlinds", MyFonts.Blinds)
-    self.next_blinds_label = MyLabel("NxtBlinds", MyFonts.Blinds, border_color="transparent", bg_color="transparent",
-                                     layout_dir=QtCore.Qt.AlignmentFlag.AlignBottom | QtCore.Qt.AlignmentFlag.AlignHCenter)
-    ## PushButtons
-    self.pb_reset = MyPushButton("reset_pb", whats_this="Resets the Level to 1 and timer to round period")
-    self.pb_load_config = MyPushButton("lc_pb", whats_this="Click to load a config from a file")
-    self.lvl_timer_control = Level_Timer_Control(self)
-
-    ## QFileDialog
-    self.file_dialog = QFileDialog(self)
-    self.file_dialog.setFileMode(QFileDialog.FileMode.ExistingFiles)
-    self.file_dialog.setNameFilter("File (*.json)")
-    self.file_dialog.accept = self.file_dialog_accept
-
-    # Add Widgets to Layout
-    # Upper section
-    self.gridLayout.addWidget(self.round_timer_label , 0, 2, 4, 3)
-    self.gridLayout.addWidget(self.break_timer_label , 3, 2, 1, 3)
-    self.gridLayout.addWidget(self.total_timer_label , 0, 2, 1, 3)
-    self.gridLayout.addWidget(self.blinds_label      , 0, 0, 3, 2)
-    self.gridLayout.addWidget(self.level_label       , 0, 0, 1, 2)
-    self.gridLayout.addWidget(self.next_blinds_label , 2, 0, 1, 2)
-    # Lower section
-    self.gridLayout.addWidget(self.lvl_timer_control , 4, 2, 1, 3)
-    self.gridLayout.addWidget(self.pb_reset          , 4, 0, 1, 1)
-    self.gridLayout.addWidget(self.level_period_input, 3, 0, 1, 2)
-    self.gridLayout.addWidget(self.pb_load_config    , 4, 1, 1, 1)
-
-    self.retranslateUi() # change labels
-
-    # Setup the Central Widget
-    widget = QWidget()
-    widget.setLayout(self.gridLayout)
-    self.setCentralWidget(widget)
-
-    QtCore.QMetaObject.connectSlotsByName(self)
+    self.main_layout.setVerticalSpacing(0)
 
     # Connect widgets to actions
-    self.lvl_timer_control.pb_next_lvl.clicked.connect(self.next_level_button_action)
-    self.lvl_timer_control.pb_prev_level.clicked.connect(self.prev_level_button_action)
-    self.lvl_timer_control.pb_start_stop.clicked.connect(self.start_stop_round_timer)
-    self.pb_reset.clicked.connect(self.reset_button_action)
-    self.pb_load_config.clicked.connect(self.load_config_from_a_file)
-    self.round_timer.timeout.connect(self.updateStats)
+    mv_control_clicks = {"Settings": self.showSettingsWindow,
+                         "Reset": self.reset_button_action,
+                         "PrevLvl": self.prev_level_button_action,
+                         "NextLvl": self.next_level_button_action,
+                         "StartStop": self.start_stop_round_timer}
+    self.mv_controls.connect_clicks(mv_control_clicks)
+
+    self.round_timer.timeout.connect(self.update_stats_every_sec)
     self.total_timer.timeout.connect(self.update_total_time)
     self.break_timer.timeout.connect(self.update_break_time)
-    self.blinds_label.mousePressEvent = self.showSettings
-    self.config_window.apply_button.clicked.connect(self.apply_config)
-    self.config_window.apply_and_close_button.clicked.connect(self.apply_config_and_close)
+
+    self.settings_window.apply_button.clicked.connect(self.sw_apply_config)
+    self.settings_window.apply_and_close_button.clicked.connect(self.sw_apply_config_and_close)
 
     # Initialize texts
-    self.update_texts()
+    self.update_mv_display_texts()
 
     # Resize Event
-    self.resizeEvent = self.customResizeEvent
+    self.main_window.resizeEvent = self.customResizeEvent
 
   # Event methods
   def customResizeEvent(self, event):
-    self.updateFonts()
+    # Calculate font sizes based on window width and height
+    width = self.main_window.width()
+    if width >= self.main_window.maximumWidth():
+      width = self.main_window.maximumWidth()
 
-  # KeyReleaseEvent
-  def formKeyReleasedAction(self, k :QtGui.QKeyEvent):
-    ENTER = 16777220 # taken from k.key() after pressing ENTER
-    if k.key() == ENTER:
-      def get_time(string):
-            if ":" in string:
-              str_m, str_s = string.split(":")
-              if str_s is not None:
-                return MyTime(int(str_m), int(str_s))
-              return MyTime(int(str_m), 0)
-            else:
-              try:
-                m = int(string)
-                return MyTime(m, 0)
-              except ValueError:
-                print("WRONG!")
-                return self.config.LEVEL_PERIOD
-      time = get_time(self.level_period_input.line_edit.displayText())
-      self.level_period_input.line_edit.value = time
-      self.config.LEVEL_PERIOD = time
-      self.current_state.update_config(self.config, update_counters=not self.round_timer_running)
-      self.level_period_input.updateText()
-      self.update_texts()
+    ButtonFontSize = int(width/ 30)
+    class DisplayFontSizes:
+      ROUND_TIMER = int(width / 7)
+      BLINDS = int(width / 15)
+      NEXT_BLINDS = int(width / 25)
+      LEVEL = int(width / 30)
+      TOTAL_TIMER = int(width / 30)
+      BREAK_TIMER = int(width / 18)
 
-  def apply_config(self):
-    self.current_state.update_config(self.config_window.config)
-    self.update_texts()
+    self.mv_display.update_fonts(DisplayFontSizes.__dict__)
+    self.mv_controls.updateFonts(ButtonFontSize)
 
-  def apply_config_and_close(self):
-    self.current_state.update_config(self.config_window.config)
-    self.config_window.close()
-    self.update_texts()
+  def set_background_img(self, path:Path = Path("images/bg.jpg")):
+    self.main_window.setStyleSheet("#MainWindow { "
+                                                f" border-image: url({path.absolute()}) 0 0 0 0 stretch stretch;"
+                                                "}")
 
-  def load_config_from_json(self, path: Path) -> PokerConfig:
-    def dict_to_config(_dict: dict):
-      _dict["LEVEL_PERIOD"] = MyTime(*_dict["LEVEL_PERIOD"])
-      return PokerConfig(**_dict)
-    with open(path, "r") as f:
-      config = json.load(f)
-    return dict_to_config(config)
+  def update_mv_display_texts(self):
+    self.mv_display.update_texts(self.sec_cnt, self.current_state)
 
-  def file_dialog_accept(self):
-    self.file_dialog.close()
-    json_path = self.file_dialog.selectedFiles()[0]
-    config = self.load_config_from_json(json_path)
-    self.config_window.update_config(config)
-    print(self.config_window.config)
-    self.current_state.update_config(self.config_window.config, True)
-    self.level_period_input.line_edit.setText(":".join([str(x) for x in self.current_state.config.LEVEL_PERIOD._list()]))
-    self.level_period_input.line_edit.value = self.current_state.config.LEVEL_PERIOD
-    self.update_texts()
+  # Settings Window
+  def sw_apply_config(self):
+    self.current_state.update_config(self.settings_window.config)
+    self.update_mv_display_texts()
 
-  def load_config_from_a_file(self):
-    self.file_dialog.show()
+  def sw_apply_config_and_close(self):
+    self.current_state.update_config(self.settings_window.config)
+    self.settings_window.close()
+    self.update_mv_display_texts()
 
-  def showSettings(self, e):
-    RIGHT_CLICK = 2
-    if e.button() == RIGHT_CLICK:
-      self.config_window.show()
+  def showSettingsWindow(self):
+    self.settings_window.show()
 
+  # Timers
   def update_break_time(self):
     if self.break_time == 0:
       self.break_time = time.time()
     new_time = time.time()
     elapsed = round(new_time - self.break_time, 2)
     time_pprint =  str(datetime.datetime.strftime(datetime.datetime.utcfromtimestamp(elapsed),'%M:%S'))
-    self.break_timer_label.setText(f"BREAK {time_pprint}")
+    self.mv_display.labels["break_timer"].setText(f"BREAK {time_pprint}")
 
   def update_total_time(self):
     new_time = time.time()
     elapsed = round(new_time - self.total_time, 2)
     time_pprint =  str(datetime.datetime.strftime(datetime.datetime.utcfromtimestamp(elapsed),'%H:%M:%S'))
-    self.total_timer_label.setText(f"{time_pprint}")
-
-  def update_texts(self):
-    def vanishing_comma(sec_cnt: int,
-                        on_time: int = 100,
-                        position: int = 300):
-      if (sec_cnt > position) and (sec_cnt < (position + on_time)):
-        return " "
-      return ":"
-    l, m, s, bb, sb, nbb, nsb = self.current_state._list()
-    print_comma = vanishing_comma(self.sec_cnt)
-    self.round_timer_label.setText(f"{m}{print_comma}{s:02d}")
-    self.blinds_label.setText(f"{sb}/{bb}")
-    self.next_blinds_label.setText(f"NEXT:{nsb}/{nbb}")
-    self.level_label.setText(f"LEVEL {l:02d}")
-
-  def count_time(self):
-    self.sec_cnt += self.time_step_ms
-    if self.sec_cnt == 1000:
-      self.sec_cnt = 0
-      return True
-    return False
+    self.mv_display.labels["total_timer"].setText(f"{time_pprint}")
 
   # method called by timer
-  def updateStats(self):
-    if self.count_time():
+  def update_stats_every_sec(self):
+    self.sec_cnt += self.time_step_ms
+    if self.sec_cnt >= 1000: # count to a second
+      self.sec_cnt = 0
       self.current_state.counter_increment()
-    self.update_texts()
+    self.update_mv_display_texts()
 
   def start_stop_round_timer(self):
-    if self.round_timer_running:
+    if self.round_timer.isActive():
       self.round_timer.stop()
       self.break_time = 0
       self.break_timer.start(1000)
-      self.lvl_timer_control.pb_start_stop.setText("⏯️")
-      self.lvl_timer_control.pb_start_stop.setStyleSheet("background-color: rgba(220,220,220,95%);"
-                                                         "border: 2px solid black;"
-                                                         "color: black;")
+      self.mv_controls.start_stop_set("stop")
     else:
       self.round_timer.start(self.time_step_ms)
       self.break_time = 0
       self.break_timer.stop()
-      self.lvl_timer_control.pb_start_stop.setText("⏯️")
-      self.lvl_timer_control.pb_start_stop.setStyleSheet("background-color: rgba(40,40,40,95%);"
-                                                         "border: 2px solid black;"
-                                                         "color: white;")
-    self.break_timer_label.setText(f"")
-    self.round_timer_running = not self.round_timer_running
-    self.lvl_timer_control.pb_start_stop.repaint()
+      self.mv_controls.start_stop_set("start")
+    self.mv_display.labels["break_timer"].setText(f"")
 
   # Actions
   def next_level_button_action(self):
     self.current_state.nxt_level()
-    self.update_texts()
+    self.update_mv_display_texts()
 
   def prev_level_button_action(self):
     self.current_state.prev_level()
-    self.update_texts()
+    self.update_mv_display_texts()
 
   def reset_button_action(self):
     self.current_state.reset_level()
-    self.update_texts()
-
-  def updateFonts(self, dividers : Sequence = [8,18,30]):
-    # Calculate font sizes based on window width and height
-    width = self.width()
-    if width >= self.maximumWidth():
-      width = self.maximumWidth()
-
-    class FontReSize:
-      S1 = int(width / dividers[0])
-      S2 = int(width / dividers[1])
-      S3 = int(width / dividers[2])
-      S4 = int(width / 30)
-      S5 = int(width / 45)
-
-    def update_font(obj, font_size):
-      # Update font sizes keeping other font parameters correct
-      font = obj.font()
-      font.setPointSize(font_size)
-      obj.setFont(font)
-      return obj
-
-    self.round_timer_label = update_font(self.round_timer_label, FontReSize.S1)
-    self.break_timer_label = update_font(self.break_timer_label, FontReSize.S2)
-    self.total_timer_label = update_font(self.total_timer_label, FontReSize.S3)
-    self.blinds_label = update_font(self.blinds_label, FontReSize.S2)
-    self.level_label = update_font(self.level_label, FontReSize.S3)
-    self.lvl_timer_control.updateFonts(FontReSize.S3)
-    self.pb_reset = update_font(self.pb_reset, FontReSize.S3)
-    self.pb_load_config = update_font(self.pb_load_config, FontReSize.S3)
-    self.next_blinds_label = update_font(self.next_blinds_label, FontReSize.S4)
-    self.level_period_input.updateFonts(FontReSize.S5)
-
-  def retranslateUi(self):
-    _translate = QtCore.QCoreApplication.translate
-    self.setWindowTitle(_translate("MainWindow", "PokerTimer"))
-    self.round_timer_label.setText(_translate("MainWindow", "TextLabel"))
-    self.blinds_label.setText(_translate("MainWindow", "TextLabel"))
-    self.next_blinds_label.setText(_translate("MainWindow", "TextLabel"))
-    self.level_label.setText(_translate("MainWindow", "TextLabel"))
-    self.lvl_timer_control.pb_prev_level.setText(_translate("MainWindow", "◀"))
-    self.lvl_timer_control.pb_next_lvl.setText(_translate("MainWindow", "▶"))
-    self.pb_reset.setText(_translate("MainWindow", "Reset"))
-    self.pb_load_config.setText(_translate("Main", "Config"))
-    self.lvl_timer_control.pb_start_stop.setText(_translate("MainWindow", "⏯️"))
-    self.total_timer_label.setText(_translate("MainWindow", "00:00:00"))
-    self.level_period_input.updateText()
+    self.update_mv_display_texts()
 
 
 if __name__ == "__main__":
@@ -351,6 +185,6 @@ if __name__ == "__main__":
   args = parser.parse_args()
   geometry = getattr(WindowGeometry, args.geometry)
 
-  ptw = PokerTimerWindow(geometry=geometry.value,
+  ptw = PokerTimer(geometry=geometry.value,
                          config_path=args.config)
   sys.exit(app.exec_())
