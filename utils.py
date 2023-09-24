@@ -5,7 +5,7 @@ from typing import Optional
 from numpy import asarray
 from PyQt5 import QtCore
 from PyQt5.QtCore import QSize
-from PyQt5.QtGui import QFont, QFontDatabase, QMouseEvent
+from PyQt5.QtGui import QFont, QFontDatabase, QKeyEvent, QMouseEvent
 from PyQt5.QtWidgets import (QFormLayout, QGridLayout, QHBoxLayout, QLabel,
                              QLineEdit, QMessageBox, QPushButton, QSizePolicy,
                              QSlider, QWidget)
@@ -39,9 +39,19 @@ class FontFamilies(Enum):
 
 
 class MyTime:
-  def __init__(self, m, s):
+  def __init__(self, m:int, s:int):
     self.m = m
     self.s = s
+
+  @classmethod
+  def fromstr(cls, string:str):
+    if ":" in string:
+      x = string.split(":")
+      m, s = int(x[0]), int(x[-1])
+    else:
+      m = int(string)
+      s = 0
+    return cls(m,s)
 
   def _list(self):
     return list((self.m, self.s))
@@ -227,6 +237,12 @@ class MyQLineEdit(QLineEdit):
       self.updateText()
     return super().leaveEvent(a0)
 
+  def keyPressEvent(self, a0: QKeyEvent) -> None:
+    ENTER_KEY_VALUE = 16777220
+    if a0.key() == ENTER_KEY_VALUE:
+      self.updateText(self.displayText())
+    return super().keyPressEvent(a0)
+
 
 def get_std_size_policy(obj) -> QSizePolicy:
   sizePolicy = QSizePolicy(QSizePolicy.Preferred, QSizePolicy.Preferred)
@@ -262,8 +278,14 @@ class MyQLineTimeEdit(MyQLineEdit):
     self.value = value
     self.setText(":".join([str(x) for x in self.value._list()]))
 
-  def updateText(self, value: Optional[MyTime] = None):
+  def updateText(self, value: Optional[MyTime] | str = None):
     if value is not None:
+      if isinstance(value, str):
+        value = MyTime.fromstr(value)
+      elif isinstance(value, MyTime):
+        pass
+      else:
+        raise TypeError("Wrong type")
       self.value = value
     self.setText(":".join([str(x) for x in self.value._list()]))
 
@@ -405,7 +427,7 @@ class ConfigWindow(QWidget):
     self.config = config
     self.forms = {}
     for name, val in self.config.__dict__.items():
-      if type(val) == MyTime:
+      if isinstance(val, MyTime):
         self.forms[name] = MyTimeForm(name, name, MyFonts.Blinds, val, border_color="black", border_width=1)
       else:
         self.forms[name] = MyForm(name, init_text=name, font=MyFonts.Blinds, value=val, border_color="black", border_width=1)
