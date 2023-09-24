@@ -14,9 +14,9 @@ class SettingsWindow(QWidget):
     super().__init__()
     self.resize(WindowGeometry.SETTINGS.value)
     self.setStyleSheet(f" background-color: {bg_color};")
-    self.config = config
+    self.cfg = config
     self.x = list(range(config.LVL_N))
-    if self.config.BIG_BLIND_VALUES == [] or self.config.BIG_BLIND_VALUES == -1: # if uninitialized
+    if self.cfg.BIG_BLIND_VALUES == [] or self.cfg.BIG_BLIND_VALUES == -1: # if uninitialized
       print("BIG_BLIND_VALUES are empty! calculating values from plots")
       self.calculate_plots()
     self.sizePolicy_Std = get_std_size_policy(self)
@@ -24,38 +24,38 @@ class SettingsWindow(QWidget):
     self.setLayout(grand_layout)
     # Sliders
     self.sliders = {}
-    self.scale_factor_scale = int(1 / self.config.SCALE_FACTOR_STEP)
-    lowest_scaling_factor = int(self.config.MIN_SCALE_FACTOR * self.scale_factor_scale)
-    max_scaling_factor = int(self.config.MAX_SCALE_FACTOR * self.scale_factor_scale)
+    self.scale_factor_scale = int(1 / self.cfg.SCALE_FACTOR_STEP)
+    lowest_scaling_factor = int(self.cfg.MIN_SCALE_FACTOR * self.scale_factor_scale)
+    max_scaling_factor = int(self.cfg.MAX_SCALE_FACTOR * self.scale_factor_scale)
     self.sliders["scale"] = MySlider(name="ScaleF",
-                                     init_val=int(self.config.SCALING_FACTOR * self.scale_factor_scale),
-                                     init_text=self.config.SCALING_FACTOR,
+                                     init_val=int(self.cfg.SCALING_FACTOR * self.scale_factor_scale),
+                                     init_text=self.cfg.SCALING_FACTOR,
                                      range_low=lowest_scaling_factor,
                                      range_high=max_scaling_factor,
                                      step = 1)
 
     self.sliders["switch_lvl_idx"] = MySlider(name="SwitchLvl",
-                                              init_val=self.config.SWITCH_LVL_IDX,
-                                              init_text=self.config.SWITCH_LVL_IDX,
+                                              init_val=self.cfg.SWITCH_LVL_IDX,
+                                              init_text=self.cfg.SWITCH_LVL_IDX,
                                               range_low=1,
-                                              range_high=self.config.LVL_N,
+                                              range_high=self.cfg.LVL_N,
                                               step=1)
 
-    self.lin_bb_step_scale = self.config.MIN_LINEAR_BB_STEP
+    self.lin_bb_step_scale = self.cfg.MIN_LINEAR_BB_STEP
     min_start_val = self.lin_bb_step_scale
-    max_start_val = self.config.MAX_LINEAR_BB_STEP
+    max_start_val = self.cfg.MAX_LINEAR_BB_STEP
     self.sliders["lin_bb_step"] = MySlider(name="LinBBStep",
-                                       init_val=self.config.LINEAR_BB_STEP//self.lin_bb_step_scale,
-                                       init_text= self.config.LINEAR_BB_STEP,
+                                       init_val=self.cfg.LINEAR_BB_STEP//self.lin_bb_step_scale,
+                                       init_text= self.cfg.LINEAR_BB_STEP,
                                        range_low=min_start_val//self.lin_bb_step_scale,
                                        range_high=max_start_val//self.lin_bb_step_scale,
                                        step=1)
 
     self.sliders["lvl_n"] = MySlider(name="LvlNum",
-                                  init_val=self.config.LVL_N,
-                                  init_text=self.config.LVL_N,
+                                  init_val=self.cfg.LVL_N,
+                                  init_text=self.cfg.LVL_N,
                                   range_low=2,
-                                  range_high=2*self.config.LVL_N,
+                                  range_high=2*self.cfg.LVL_N,
                                   step=1)
 
     # Buttons
@@ -85,7 +85,7 @@ class SettingsWindow(QWidget):
     self.data_line_s = self.graphWidget.plot(self.x, self.scaled, name="Scaled", pen=pen, symbol="o", symbolSize=30, symbolBrush=('b'))
     self.data_line_l = self.graphWidget.plot(self.x, self.linear, name="Linear", pen=pen, symbol="o", symbolSize=30, symbolBrush=('g'))
     self.data_line_y = self.graphWidget.plot(self.x, self.y, name="Combined", pen=pen, symbol="o", symbolSize=30, symbolBrush=('r'))
-    self.data_line_sw = self.graphWidget.plot([self.config.SWITCH_LVL_IDX], [self.y[self.config.SWITCH_LVL_IDX]], name="SW_PT", pen=pen, symbol="o", symbolSize=40, symbolBrush=('yellow'))
+    self.data_line_sw = self.graphWidget.plot([self.cfg.SWITCH_LVL_IDX], [self.y[self.cfg.SWITCH_LVL_IDX]], name="SW_PT", pen=pen, symbol="o", symbolSize=40, symbolBrush=('yellow'))
     styles = {'color':'r', 'font-size':'20px'}
     self.graphWidget.setLabel('left', 'BigBlind', **styles)
     self.graphWidget.setLabel('bottom', 'Level', **styles)
@@ -137,7 +137,7 @@ class SettingsWindow(QWidget):
 
   def save_config_to_a_file(self):
     path = Path( QFileDialog(self).getSaveFileName(self, filter="*.json")[0])
-    dict_config = dump_config_to_json(self.config)
+    dict_config = dump_config_to_json(self.cfg)
     with open(path, "w") as f:
       json.dump(dict_config, f)
 
@@ -165,51 +165,51 @@ class SettingsWindow(QWidget):
     self.data_line_y.setData(self.x, self.y)
     self.data_line_s.setData(self.x, self.scaled)
     self.data_line_l.setData(self.x, self.linear)
-    self.data_line_sw.setData([self.config.SWITCH_LVL_IDX], [self.y[self.config.SWITCH_LVL_IDX]])
+    self.data_line_sw.setData([self.cfg.SWITCH_LVL_IDX], [self.y[self.cfg.SWITCH_LVL_IDX]])
 
   def changeScalingFactorValue(self, a0):
-    self.config.SCALING_FACTOR = a0 / self.scale_factor_scale
+    self.cfg.SCALING_FACTOR = a0 / self.scale_factor_scale
     self.calculate_plots()
-    self.sliders["scale"].updateText(self.config.SCALING_FACTOR)
+    self.sliders["scale"].updateText(self.cfg.SCALING_FACTOR)
     self.updatePlots()
-    self.cfg_window.update_config(self.config)
+    self.cfg_window.update_config(self.cfg)
 
   def changeSwitchingPointValue(self, a0):
-    self.config.SWITCH_LVL_IDX = int(a0)
+    self.cfg.SWITCH_LVL_IDX = int(a0)
     self.calculate_plots()
     self.sliders["switch_lvl_idx"].updateText(a0)
     self.updatePlots()
-    self.cfg_window.update_config(self.config)
+    self.cfg_window.update_config(self.cfg)
 
   def changeLinearBBStepValue(self, a0):
-    self.config.LINEAR_BB_STEP = int(a0) * self.lin_bb_step_scale
+    self.cfg.LINEAR_BB_STEP = int(a0) * self.lin_bb_step_scale
     self.calculate_plots()
-    self.sliders["lin_bb_step"].updateText(self.config.LINEAR_BB_STEP)
+    self.sliders["lin_bb_step"].updateText(self.cfg.LINEAR_BB_STEP)
     self.updatePlots()
-    self.cfg_window.update_config(self.config)
+    self.cfg_window.update_config(self.cfg)
 
   def changeLvlNumberValue(self, a0):
-    self.config.LVL_N = int(a0)
-    self.x = list(range(0, self.config.LVL_N, 1))
-    if self.config.SWITCH_LVL_IDX > len(self.x):
-      self.config.SWITCH_LVL_IDX = self.x[-1]
-      self.sliders["switch_lvl_idx"].updateText(self.config.SWITCH_LVL_IDX)
-    self.sliders["switch_lvl_idx"].slider.setMaximum(self.config.LVL_N-1)
+    self.cfg.LVL_N = int(a0)
+    self.x = list(range(0, self.cfg.LVL_N, 1))
+    if self.cfg.SWITCH_LVL_IDX > len(self.x):
+      self.cfg.SWITCH_LVL_IDX = self.x[-1]
+      self.sliders["switch_lvl_idx"].updateText(self.cfg.SWITCH_LVL_IDX)
+    self.sliders["switch_lvl_idx"].slider.setMaximum(self.cfg.LVL_N-1)
     self.calculate_plots()
-    self.sliders["lvl_n"].updateText(self.config.LVL_N)
+    self.sliders["lvl_n"].updateText(self.cfg.LVL_N)
     self.updatePlots()
-    self.cfg_window.update_config(self.config)
+    self.cfg_window.update_config(self.cfg)
 
   def calculate_plots(self):
-    lvl_n = self.config.LVL_N
-    switch_lvl_idx = self.config.SWITCH_LVL_IDX
-    scale_f = self.config.SCALING_FACTOR
-    lin_bb_step = self.config.LINEAR_BB_STEP
-    generator1 = gen_func(lin_bb_step, lvl_n, None, scale_linear, bb_inc=self.config.MIN_LINEAR_BB_STEP)
+    lvl_n = self.cfg.LVL_N
+    switch_lvl_idx = self.cfg.SWITCH_LVL_IDX
+    scale_f = self.cfg.SCALING_FACTOR
+    lin_bb_step = self.cfg.LINEAR_BB_STEP
+    generator1 = gen_func(lin_bb_step, lvl_n, None, scale_linear, bb_inc=self.cfg.MIN_LINEAR_BB_STEP)
     linear = list(generator1)
     scale_start_val = get_scale_value_level_0(linear[switch_lvl_idx], switch_lvl_idx, 1/scale_f)
-    generator2 = gen_func(linear[switch_lvl_idx], lvl_n, scale_f, scale_by_factor, bb_inc=self.config.MIN_LINEAR_BB_STEP)
-    generator3 = gen_func(scale_start_val, lvl_n, scale_f, scale_by_factor, bb_inc=self.config.MIN_LINEAR_BB_STEP)
+    generator2 = gen_func(linear[switch_lvl_idx], lvl_n, scale_f, scale_by_factor, bb_inc=self.cfg.MIN_LINEAR_BB_STEP)
+    generator3 = gen_func(scale_start_val, lvl_n, scale_f, scale_by_factor, bb_inc=self.cfg.MIN_LINEAR_BB_STEP)
     scaled = list(generator2)
     scaled_rev = list(generator3)
     y = []
@@ -222,41 +222,41 @@ class SettingsWindow(QWidget):
     self.y = y
     self.linear = linear
     self.scaled = scaled_rev
-    self.config.BIG_BLIND_VALUES = [int(x) for x in y]
+    self.cfg.BIG_BLIND_VALUES = [int(x) for x in y]
 
   def update_config(self, config: PokerConfig):
-    self.config = config
+    self.cfg = config
     self.x = list(range(config.LVL_N))
     self.calculate_plots()
 
     self.cfg_window.update_config(config)
 
-    self.scale_factor_scale = int(1 / self.config.SCALE_FACTOR_STEP)
-    lowest_scaling_factor = int(self.config.MIN_SCALE_FACTOR * self.scale_factor_scale)
-    max_scaling_factor = int(self.config.MAX_SCALE_FACTOR * self.scale_factor_scale)
+    self.scale_factor_scale = int(1 / self.cfg.SCALE_FACTOR_STEP)
+    lowest_scaling_factor = int(self.cfg.MIN_SCALE_FACTOR * self.scale_factor_scale)
+    max_scaling_factor = int(self.cfg.MAX_SCALE_FACTOR * self.scale_factor_scale)
 
     self.sliders["scale"].slider.setMaximum(int(max_scaling_factor))
     self.sliders["scale"].slider.setMinimum(int(lowest_scaling_factor))
-    self.sliders["scale"].slider.setValue(int(self.config.SCALING_FACTOR * self.scale_factor_scale))
-    self.sliders["scale"].updateText(str(self.config.SCALING_FACTOR))
+    self.sliders["scale"].slider.setValue(int(self.cfg.SCALING_FACTOR * self.scale_factor_scale))
+    self.sliders["scale"].updateText(str(self.cfg.SCALING_FACTOR))
 
-    self.sliders["switch_lvl_idx"].slider.setMaximum(self.config.LVL_N)
+    self.sliders["switch_lvl_idx"].slider.setMaximum(self.cfg.LVL_N)
     self.sliders["switch_lvl_idx"].slider.setMinimum(1)
-    self.sliders["switch_lvl_idx"].slider.setValue(int(self.config.SWITCH_LVL_IDX))
-    self.sliders["switch_lvl_idx"].updateText(str(self.config.SWITCH_LVL_IDX))
+    self.sliders["switch_lvl_idx"].slider.setValue(int(self.cfg.SWITCH_LVL_IDX))
+    self.sliders["switch_lvl_idx"].updateText(str(self.cfg.SWITCH_LVL_IDX))
 
-    self.lin_bb_step_scale = self.config.MIN_LINEAR_BB_STEP
+    self.lin_bb_step_scale = self.cfg.MIN_LINEAR_BB_STEP
     min_start_val = self.lin_bb_step_scale
-    max_start_val = self.config.MAX_LINEAR_BB_STEP
+    max_start_val = self.cfg.MAX_LINEAR_BB_STEP
     self.sliders["lin_bb_step"].slider.setMaximum(max_start_val//self.lin_bb_step_scale)
     self.sliders["lin_bb_step"].slider.setMinimum(min_start_val//self.lin_bb_step_scale)
-    self.sliders["lin_bb_step"].slider.setValue(self.config.LINEAR_BB_STEP//self.lin_bb_step_scale)
-    self.sliders["lin_bb_step"].updateText(str(self.config.LINEAR_BB_STEP))
+    self.sliders["lin_bb_step"].slider.setValue(self.cfg.LINEAR_BB_STEP//self.lin_bb_step_scale)
+    self.sliders["lin_bb_step"].updateText(str(self.cfg.LINEAR_BB_STEP))
 
-    self.sliders["lvl_n"].slider.setMaximum(2*self.config.LVL_N)
+    self.sliders["lvl_n"].slider.setMaximum(2*self.cfg.LVL_N)
     self.sliders["lvl_n"].slider.setMinimum(2)
-    self.sliders["lvl_n"].slider.setValue(self.config.LVL_N)
-    self.sliders["lvl_n"].updateText(str(self.config.LVL_N))
+    self.sliders["lvl_n"].slider.setValue(self.cfg.LVL_N)
+    self.sliders["lvl_n"].updateText(str(self.cfg.LVL_N))
 
     self.updatePlots()
 
@@ -265,4 +265,4 @@ class SettingsWindow(QWidget):
     self.update_config(self.cfg_window.get_config())
 
   def refresh_cfg_window(self):
-    self.cfg_window.update_config(self.config)
+    self.cfg_window.update_config(self.cfg)

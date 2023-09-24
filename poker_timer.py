@@ -24,7 +24,7 @@ class PokerTimer():
       raise ValueError(f"Config file {config_path.absolute()} does not exist!")
     self.settings_window = SettingsWindow(load_config_from_json(config_path))
     self.main_window = QMainWindow()
-    self.current_state = PokerGameState(self.settings_window.config)
+    self.current_state = PokerGameState(self.settings_window.cfg)
 
     # Time counters
     self.sec_cnt = 0
@@ -117,11 +117,11 @@ class PokerTimer():
 
   # Settings Window
   def sw_apply_config(self):
-    self.current_state.update_config(self.settings_window.config)
+    self.current_state.update_config(self.settings_window.cfg)
     self.update_mv_display_texts()
 
   def sw_apply_config_and_close(self):
-    self.current_state.update_config(self.settings_window.config)
+    self.current_state.update_config(self.settings_window.cfg)
     self.settings_window.close()
     self.update_mv_display_texts()
 
