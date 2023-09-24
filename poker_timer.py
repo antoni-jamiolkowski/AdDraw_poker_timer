@@ -76,8 +76,8 @@ class PokerTimer():
     self.total_timer.timeout.connect(self.update_total_time)
     self.break_timer.timeout.connect(self.update_break_time)
 
-    self.settings_window.apply_button.clicked.connect(self.sw_apply_config)
-    self.settings_window.apply_and_close_button.clicked.connect(self.sw_apply_config_and_close)
+    self.settings_window.buttons["apply"].clicked.connect(self.sw_apply_config)
+    self.settings_window.buttons["apply_and_close"].clicked.connect(self.sw_apply_config_and_close)
 
     # Initialize texts
     self.update_mv_display_texts()

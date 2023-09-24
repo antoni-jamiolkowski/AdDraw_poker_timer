@@ -59,18 +59,21 @@ class SettingsWindow(QWidget):
                                   step=1)
 
     # Buttons
-    self.apply_button = MyPushButton("apply_btn",
+    self.buttons = {}
+
+
+    self.buttons["apply"] = MyPushButton("apply_btn",
                                      text="Apply!",
                                      whats_this="This button sets GameConfig based on slider values")
 
-    self.apply_and_close_button = MyPushButton("apply_close_btn",
+    self.buttons["apply_and_close"] = MyPushButton("apply_close_btn",
                                                text="Apply and Close!",
                                                whats_this="This button sets GameConfig based on slider values")
 
-    self.load_config = MyPushButton("config_load", text="Load Config", whats_this="Loads Config from file",
-                                    font=self.apply_and_close_button.font())
-    self.save_config = MyPushButton("config_save", text="Save Config", whats_this="Saves Config to file",
-                                    font=self.apply_and_close_button.font())
+    self.buttons["load_config"] = MyPushButton("config_load", text="Load Config", whats_this="Loads Config from file",
+                                    font=self.buttons["apply_and_close"].font())
+    self.buttons["save_config"] = MyPushButton("config_save", text="Save Config", whats_this="Saves Config to file",
+                                    font=self.buttons["apply_and_close"].font())
 
     # Config
     self.config_window = ConfigWindow(config)
@@ -99,13 +102,13 @@ class SettingsWindow(QWidget):
       GLayout.addWidget(slider, sid, 0, 1, 3)
 
     ButtonLayout = QHBoxLayout()
-    ButtonLayout.addWidget(self.apply_button)
-    ButtonLayout.addWidget(self.apply_and_close_button)
+    ButtonLayout.addWidget(self.buttons["apply"])
+    ButtonLayout.addWidget(self.buttons["apply_and_close"])
 
     VVLayout = QVBoxLayout()
     VVLayout.addWidget(self.config_window)
-    VVLayout.addWidget(self.load_config)
-    VVLayout.addWidget(self.save_config)
+    VVLayout.addWidget(self.buttons["load_config"])
+    VVLayout.addWidget(self.buttons["save_config"])
 
     HHLayout = QHBoxLayout()
     HHLayout.addLayout(GLayout)
@@ -124,8 +127,8 @@ class SettingsWindow(QWidget):
     self.sliders["switch_lvl_idx"].slider.valueChanged[int].connect(self.changeSwitchingPointValue)
     self.sliders["lin_bb_step"].slider.valueChanged[int].connect(self.changeLinearBBStepValue)
     self.sliders["lvl_n"].slider.valueChanged[int].connect(self.changeLvlNumberValue)
-    self.load_config.clicked.connect(self.load_config_from_a_file)
-    self.save_config.clicked.connect(self.save_config_to_a_file)
+    self.buttons["load_config"].clicked.connect(self.load_config_from_a_file)
+    self.buttons["save_config"].clicked.connect(self.save_config_to_a_file)
 
   def load_config_from_a_file(self):
     json_path = QFileDialog(self).getOpenFileName(filter="File (*.json)")[0]
@@ -145,13 +148,13 @@ class SettingsWindow(QWidget):
       width = self.maximumWidth()
     ButtonFontSize = int(width / 60)
     ButtonLCFontSize = int(width / 90)
-    font = self.apply_and_close_button.font()
+    font = self.buttons["apply_and_close"].font()
     font.setPointSize(ButtonFontSize)
-    self.apply_and_close_button.setFont(font)
-    self.apply_button.setFont(font)
+    self.buttons["apply_and_close"].setFont(font)
+    self.buttons["apply"].setFont(font)
     font.setPointSize(ButtonLCFontSize)
-    self.load_config.setFont(font)
-    self.save_config.setFont(font)
+    self.buttons["load_config"].setFont(font)
+    self.buttons["save_config"].setFont(font)
     sliderFontSize = int(width/120)
     font = self.sliders["scale"].label.font()
     font.setPointSize(sliderFontSize)
