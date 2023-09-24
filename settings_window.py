@@ -60,8 +60,6 @@ class SettingsWindow(QWidget):
 
     # Buttons
     self.buttons = {}
-
-
     self.buttons["apply"] = MyPushButton("apply_btn",
                                      text="Apply!",
                                      whats_this="This button sets GameConfig based on slider values")
@@ -76,12 +74,12 @@ class SettingsWindow(QWidget):
                                     font=self.buttons["apply_and_close"].font())
 
     # Config
-    self.config_window = ConfigWindow(config)
+    self.cfg_window = ConfigWindow(config)
 
     # Graph
     self.graphWidget = pg.PlotWidget(self)
     self.graphWidget.setSizePolicy(self.sizePolicy_Std)
-    self.config_window.setSizePolicy(self.sizePolicy_Std)
+    self.cfg_window.setSizePolicy(self.sizePolicy_Std)
 
     pen = pg.mkPen(width=10, style=QtCore.Qt.DashDotDotLine)
     self.data_line_s = self.graphWidget.plot(self.x, self.scaled, name="Scaled", pen=pen, symbol="o", symbolSize=30, symbolBrush=('b'))
@@ -106,7 +104,7 @@ class SettingsWindow(QWidget):
     ButtonLayout.addWidget(self.buttons["apply_and_close"])
 
     VVLayout = QVBoxLayout()
-    VVLayout.addWidget(self.config_window)
+    VVLayout.addWidget(self.cfg_window)
     VVLayout.addWidget(self.buttons["load_config"])
     VVLayout.addWidget(self.buttons["save_config"])
 
@@ -129,6 +127,8 @@ class SettingsWindow(QWidget):
     self.sliders["lvl_n"].slider.valueChanged[int].connect(self.changeLvlNumberValue)
     self.buttons["load_config"].clicked.connect(self.load_config_from_a_file)
     self.buttons["save_config"].clicked.connect(self.save_config_to_a_file)
+    self.cfg_window.pb_apply.clicked.connect(self.apply_cfg_window)
+    self.cfg_window.pb_refresh.clicked.connect(self.refresh_cfg_window)
 
   def load_config_from_a_file(self):
     json_path = QFileDialog(self).getOpenFileName(filter="File (*.json)")[0]
@@ -172,21 +172,21 @@ class SettingsWindow(QWidget):
     self.calculate_plots()
     self.sliders["scale"].updateText(self.config.SCALING_FACTOR)
     self.updatePlots()
-    self.config_window.update_config(self.config)
+    self.cfg_window.update_config(self.config)
 
   def changeSwitchingPointValue(self, a0):
     self.config.SWITCH_LVL_IDX = int(a0)
     self.calculate_plots()
     self.sliders["switch_lvl_idx"].updateText(a0)
     self.updatePlots()
-    self.config_window.update_config(self.config)
+    self.cfg_window.update_config(self.config)
 
   def changeLinearBBStepValue(self, a0):
     self.config.LINEAR_BB_STEP = int(a0) * self.lin_bb_step_scale
     self.calculate_plots()
     self.sliders["lin_bb_step"].updateText(self.config.LINEAR_BB_STEP)
     self.updatePlots()
-    self.config_window.update_config(self.config)
+    self.cfg_window.update_config(self.config)
 
   def changeLvlNumberValue(self, a0):
     self.config.LVL_N = int(a0)
@@ -198,7 +198,7 @@ class SettingsWindow(QWidget):
     self.calculate_plots()
     self.sliders["lvl_n"].updateText(self.config.LVL_N)
     self.updatePlots()
-    self.config_window.update_config(self.config)
+    self.cfg_window.update_config(self.config)
 
   def calculate_plots(self):
     lvl_n = self.config.LVL_N
@@ -229,7 +229,7 @@ class SettingsWindow(QWidget):
     self.x = list(range(config.LVL_N))
     self.calculate_plots()
 
-    self.config_window.update_config(config)
+    self.cfg_window.update_config(config)
 
     self.scale_factor_scale = int(1 / self.config.SCALE_FACTOR_STEP)
     lowest_scaling_factor = int(self.config.MIN_SCALE_FACTOR * self.scale_factor_scale)
@@ -259,3 +259,10 @@ class SettingsWindow(QWidget):
     self.sliders["lvl_n"].updateText(str(self.config.LVL_N))
 
     self.updatePlots()
+
+  def apply_cfg_window(self):
+    print("X")
+    self.update_config(self.cfg_window.get_config())
+
+  def refresh_cfg_window(self):
+    self.cfg_window.update_config(self.config)

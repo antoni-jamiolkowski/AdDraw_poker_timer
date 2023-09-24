@@ -65,7 +65,7 @@ class PokerConfig:
   LVL_N : int = -1 # Number of Levels in the PokerGame
   LINEAR_BB_STEP : int = -1 # BigBlind value to increase the BB value by every Level
   SWITCH_LVL_IDX : int = -1 # After which level Blinds should switch to scaling by scaling_factor
-  SCALING_FACTOR : int = -1 # scaling factor to scale the blinds by after Switch level
+  SCALING_FACTOR : float = -1 # scaling factor to scale the blinds by after Switch level
   CHIP_INCREMENT : int = -1 # Smallest difference between chips
   BIG_BLIND_VALUES : any = -1 # BB Values for every level of the game
   LEVEL_PERIOD : MyTime = MyTime(-1,-1)
@@ -161,13 +161,13 @@ class MyFonts:
 
 class MyForm(QWidget):
   def __init__(self, name, init_text, font, value = None, whatsThis ="a Form",
-               border_width:int = 5, border_color: str = "gold", bgc="white"):
+               border_width:int = 5, border_color: str = "gold", bgc="white", val_type=int):
     super().__init__()
     self.name = name
     self.setWhatsThis(whatsThis)
     self.label = MyLabel(name, init_text, font=font, border_width=border_width, border_color=border_color)
     self.label.mousePressEvent = self.labelMousePressEvent
-    self.line_edit = MyQLineEdit(value)
+    self.line_edit = MyQLineEdit(value, val_type=val_type)
     self.layout = QHBoxLayout(self)
     self.layout.addWidget(self.label    )
     self.layout.addWidget(self.line_edit)
@@ -195,6 +195,8 @@ class MyForm(QWidget):
     else:
       return super().mousePressEvent(e)
 
+  def get_val(self):
+    return self.line_edit.value
 
 class MyTimeForm(MyForm):
   def __init__(self, name, init_text, font, value, whatsThis="a Form", border_color: str = "gold", border_width: int = 5):
@@ -206,9 +208,10 @@ class MyTimeForm(MyForm):
 
 class MyQLineEdit(QLineEdit):
   def __init__(self, value, font: MyFonts = MyFonts.Blinds,
-               bgc = "white"):
+               bgc = "white", val_type=int):
     super().__init__()
     self.value = value
+    self.val_type = val_type
     self.setText(f"{value}")
     self.setSizeIncrement(QtCore.QSize(1, 1))
     self.setFont(font)
@@ -224,7 +227,7 @@ class MyQLineEdit(QLineEdit):
   def updateText(self,
                  value: Optional[str] = None):
     if value is not None:
-      self.value = value
+      self.value = self.val_type(value)
     self.setText(f"{self.value}")
 
   def mousePressEvent(self, a0) -> None:
@@ -430,16 +433,28 @@ class ConfigWindow(QWidget):
       if isinstance(val, MyTime):
         self.forms[name] = MyTimeForm(name, name, MyFonts.Blinds, val, border_color="black", border_width=1)
       else:
-        self.forms[name] = MyForm(name, init_text=name, font=MyFonts.Blinds, value=val, border_color="black", border_width=1)
+        self.forms[name] = MyForm(name, init_text=name, font=MyFonts.Blinds, value=val, border_color="black", border_width=1, val_type=type(val))
+
+    self.pb_apply = MyPushButton("refresh", "Apply", "Refreshes the config")
+    self.pb_refresh = MyPushButton("refresh", "Refresh", "Refreshes the config")
 
     self.layout = QFormLayout(self)
     for x in self.forms.values():
       self.layout.addWidget(x)
+    self.layout.addWidget(self.pb_apply)
+    self.layout.addWidget(self.pb_refresh)
 
   def update_config(self, config: PokerConfig):
     self.config = config
     for name, val in self.config.__dict__.items():
+      print(name, type(val))
       self.forms[name].updateText(val)
+
+  def get_config(self):
+    config = PokerConfig()
+    for name, val in self.forms.items():
+      setattr(config, name, val.get_val())
+    return config
 
 
 class MainWindowControls(QWidget):
