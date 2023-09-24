@@ -447,7 +447,6 @@ class ConfigWindow(QWidget):
   def update_config(self, config: PokerConfig):
     self.config = config
     for name, val in self.config.__dict__.items():
-      print(name, type(val))
       self.forms[name].updateText(val)
 
   def get_config(self):
