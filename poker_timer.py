@@ -1,4 +1,6 @@
 import datetime
+# to close MainWindow/QApp with Ctrl+C
+import signal
 import time
 from pathlib import Path
 
@@ -8,8 +10,6 @@ from PyQt5.QtWidgets import QApplication, QGridLayout, QMainWindow, QWidget
 from settings_window import SettingsWindow
 from utils import *
 
-# to close MainWindow/QApp with Ctrl+C
-import signal
 signal.signal(signal.SIGINT, signal.SIG_DFL)
 
 class PokerTimer():

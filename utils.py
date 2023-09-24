@@ -1,5 +1,7 @@
+import json
 from dataclasses import dataclass
 from enum import Enum, unique
+from pathlib import Path
 from typing import Optional
 
 from numpy import asarray
@@ -10,8 +12,6 @@ from PyQt5.QtWidgets import (QFormLayout, QGridLayout, QHBoxLayout, QLabel,
                              QLineEdit, QMessageBox, QPushButton, QSizePolicy,
                              QSlider, QWidget)
 
-from pathlib import Path
-import json
 
 @unique
 class WindowGeometry(Enum):
