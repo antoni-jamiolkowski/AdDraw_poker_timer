@@ -99,14 +99,14 @@ class SettingsWindow(QWidget):
     for sid, slider in enumerate(self.sliders.values()):
       GLayout.addWidget(slider, sid, 0, 1, 3)
 
-    ButtonLayout = QHBoxLayout()
-    ButtonLayout.addWidget(self.buttons["apply"])
-    ButtonLayout.addWidget(self.buttons["apply_and_close"])
+    ButtonLayout = QGridLayout()
+    ButtonLayout.addWidget(self.buttons["apply"]          , 0,0,1,1)
+    ButtonLayout.addWidget(self.buttons["apply_and_close"], 1,0,1,1)
+    ButtonLayout.addWidget(self.buttons["load_config"]    , 0,1,1,1)
+    ButtonLayout.addWidget(self.buttons["save_config"]    , 1,1,1,1)
 
     VVLayout = QVBoxLayout()
     VVLayout.addWidget(self.cfg_window)
-    VVLayout.addWidget(self.buttons["load_config"])
-    VVLayout.addWidget(self.buttons["save_config"])
 
     HHLayout = QHBoxLayout()
     HHLayout.addLayout(GLayout)
@@ -142,13 +142,12 @@ class SettingsWindow(QWidget):
     with open(path, "w") as f:
       json.dump(dict_config, f)
 
-  def customResizeEvent(self, event):
-    # # Calculate font sizes based on window width and height
+  def customResizeEvent(self, event) -> None:
     width = self.width()
     if width >= self.maximumWidth():
       width = self.maximumWidth()
     ButtonFontSize = int(width / 60)
-    ButtonLCFontSize = int(width / 90)
+    ButtonLCFontSize = int(width / 60)
     font = self.buttons["apply_and_close"].font()
     font.setPointSize(ButtonFontSize)
     self.buttons["apply_and_close"].setFont(font)
@@ -156,11 +155,14 @@ class SettingsWindow(QWidget):
     font.setPointSize(ButtonLCFontSize)
     self.buttons["load_config"].setFont(font)
     self.buttons["save_config"].setFont(font)
-    sliderFontSize = int(width/120)
+    sliderFontSize = int(width/90)
     font = self.sliders["scale"].label.font()
     font.setPointSize(sliderFontSize)
     for slider in self.sliders.values():
       slider.label.setFont(font)
+
+    self.cfg_window.pb_apply.setFont(font)
+    self.cfg_window.pb_refresh.setFont(font)
 
   def updatePlots(self):
     self.data_line_y.setData(self.x, self.y)
@@ -262,7 +264,6 @@ class SettingsWindow(QWidget):
     self.updatePlots()
 
   def apply_cfg_window(self):
-    print("X")
     self.update_config(self.cfg_window.get_config())
 
   def refresh_cfg_window(self):

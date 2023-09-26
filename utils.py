@@ -65,7 +65,7 @@ class PokerConfig:
   LVL_N : int = -1 # Number of Levels in the PokerGame
   LINEAR_BB_STEP : int = -1 # BigBlind value to increase the BB value by every Level
   SWITCH_LVL_IDX : int = -1 # After which level Blinds should switch to scaling by scaling_factor
-  SCALING_FACTOR : float = -1 # scaling factor to scale the blinds by after Switch level
+  SCALING_FACTOR : float = -1.1 # scaling factor to scale the blinds by after Switch level
   CHIP_INCREMENT : int = -1 # Smallest difference between chips
   BIG_BLIND_VALUES : any = -1 # BB Values for every level of the game
   LEVEL_PERIOD : MyTime = MyTime(-1,-1)
@@ -90,6 +90,9 @@ class PokerGameState:
 
   def update_config(self, config: PokerConfig, update_counters: bool = True):
     self.config = config
+    assert(isinstance(config.LEVEL_PERIOD, MyTime))
+    assert(isinstance(config.BIG_BLIND_VALUES, list))
+
     if update_counters:
       self.reset_timer()
 
@@ -112,7 +115,7 @@ class PokerGameState:
   def counter_increment(self):
     if self.minute == 0 and self.second == 0:
       self.current_level += 1
-      self.minute, self.second = self.config.LEVEL_PERIOD._list()
+      self.reset_timer()
       return
     if self.second == 0:
       self.minute -= 1
@@ -135,8 +138,7 @@ class PokerGameState:
     self.reset_timer()
 
   def reset_timer(self):
-    self.minute = self.config.LEVEL_PERIOD.m
-    self.second = self.config.LEVEL_PERIOD.s
+    self.minute, self.second = self.config.LEVEL_PERIOD._list()
 
 def setupQFontDataBase():
   qfont_db = QFontDatabase()
