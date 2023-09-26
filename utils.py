@@ -260,10 +260,12 @@ def get_fixed_size_policy(): #DUNNO IF THIS WORKS
   return sizePolicy
 
 
-def load_config_from_json(path: Path) -> PokerConfig:
+def load_config_from_json(path: Path) -> PokerConfig | bool:
   def dict_to_config(_dict: dict):
     _dict["LEVEL_PERIOD"] = MyTime(*_dict["LEVEL_PERIOD"])
     return PokerConfig(**_dict)
+  if not path.exists() or path.is_dir():
+    return False
   with open(path, "r") as f:
     config = json.load(f)
   return dict_to_config(config)

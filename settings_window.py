@@ -131,9 +131,10 @@ class SettingsWindow(QWidget):
     self.cfg_window.pb_refresh.clicked.connect(self.refresh_cfg_window)
 
   def load_config_from_a_file(self):
-    json_path = QFileDialog(self).getOpenFileName(filter="File (*.json)")[0]
+    json_path = Path(QFileDialog(self).getOpenFileName(filter="File (*.json)")[0])
     config = load_config_from_json(json_path)
-    self.update_config(config)
+    if config: # if it's not False, then update
+      self.update_config(config)
 
   def save_config_to_a_file(self):
     path = Path( QFileDialog(self).getSaveFileName(self, filter="*.json")[0])
