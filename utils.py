@@ -8,7 +8,7 @@ from numpy import asarray
 from PyQt5 import QtCore
 from PyQt5.QtCore import QSize
 from PyQt5.QtGui import QFont, QFontDatabase, QKeyEvent, QMouseEvent
-from PyQt5.QtWidgets import (QFormLayout, QGridLayout, QHBoxLayout, QLabel,
+from PyQt5.QtWidgets import (QFormLayout, QVBoxLayout, QGridLayout, QHBoxLayout, QLabel,
                              QLineEdit, QMessageBox, QPushButton, QSizePolicy,
                              QSlider, QWidget)
 
@@ -431,6 +431,7 @@ class MySlider(QWidget):
 class ConfigWindow(QWidget):
   def __init__(self, config : PokerConfig) -> None:
     super().__init__()
+    self.setSizePolicy(get_fixed_size_policy())
     self.config = config
     self.forms = {}
     for name, val in self.config.__dict__.items():
@@ -442,7 +443,7 @@ class ConfigWindow(QWidget):
     self.pb_apply = MyPushButton("refresh", "Apply", "Refreshes the config")
     self.pb_refresh = MyPushButton("refresh", "Refresh", "Refreshes the config")
 
-    self.layout = QFormLayout(self)
+    self.layout = QVBoxLayout(self)
     for x in self.forms.values():
       self.layout.addWidget(x)
     self.layout.addWidget(self.pb_apply)

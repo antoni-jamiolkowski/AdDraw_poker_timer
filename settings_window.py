@@ -79,7 +79,6 @@ class SettingsWindow(QWidget):
     # Graph
     self.graphWidget = pg.PlotWidget(self)
     self.graphWidget.setSizePolicy(self.sizePolicy_Std)
-    self.cfg_window.setSizePolicy(self.sizePolicy_Std)
 
     pen = pg.mkPen(width=10, style=QtCore.Qt.DashDotDotLine)
     self.data_line_s = self.graphWidget.plot(self.x, self.scaled, name="Scaled", pen=pen, symbol="o", symbolSize=30, symbolBrush=('b'))
@@ -163,6 +162,9 @@ class SettingsWindow(QWidget):
 
     self.cfg_window.pb_apply.setFont(font)
     self.cfg_window.pb_refresh.setFont(font)
+    font.setPointSize(ButtonFontSize)
+    for name in self.cfg_window.forms.keys():
+      self.cfg_window.forms[name].setFont(font)
 
   def updatePlots(self):
     self.data_line_y.setData(self.x, self.y)
