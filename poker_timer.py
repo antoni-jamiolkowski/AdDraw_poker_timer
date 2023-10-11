@@ -5,7 +5,7 @@ import time
 from pathlib import Path
 
 from PyQt5.QtCore import QSize, QTimer
-from PyQt5.QtWidgets import QApplication, QGridLayout, QMainWindow, QWidget
+from PyQt5.QtWidgets import QApplication, QGridLayout, QMainWindow, QWidget, QRadioButton
 
 from settings_window import SettingsWindow
 from utils import *
@@ -61,9 +61,15 @@ class PokerTimer():
     self.mv_display = MainWindowDisplay(self.central_widget)
     self.mv_controls = MainWindowControls(self.central_widget)
 
+    self.check = QRadioButton(self.central_widget)
+    self.check.clicked.connect(self.hide_show_ctrls)
+    self.check.setText("Hide")
+    self.check.setStyleSheet("color: white")
+
     # Add Widgets to main window
     self.main_layout.addWidget(self.mv_controls, 4, 0, 1, 5)
     self.main_layout.addWidget(self.mv_display, 0, 0, 4, 5)
+    self.main_layout.addWidget(self.check, 0,0,1,1)
 
     self.main_layout.setVerticalSpacing(0)
 
@@ -177,6 +183,12 @@ class PokerTimer():
     self.current_state.reset_level()
     self.update_mv_display_texts()
 
+
+  def hide_show_ctrls(self):
+    if self.mv_controls.isHidden():
+      self.mv_controls.setHidden(False)
+    else:
+      self.mv_controls.setHidden(True)
 
 if __name__ == "__main__":
   import sys
