@@ -4,6 +4,8 @@ import signal
 import time
 from pathlib import Path
 
+from typing import Optional
+
 from PyQt5.QtCore import QSize, QTimer
 from PyQt5.QtWidgets import QApplication, QGridLayout, QMainWindow, QWidget, QRadioButton
 
@@ -19,12 +21,15 @@ class PokerTimer():
                time_step_ms : int = 10,
                config_path: Optional[Path] = None
                ):
-    config_path = Path("configs/config.json") if config_path is None else config_path
+    config_path = Path("configs/t10000.json") if config_path is None else config_path
     if not config_path.exists():
       raise ValueError(f"Config file {config_path.absolute()} does not exist!")
-    self.settings_window = SettingsWindow(load_config_from_json(config_path))
+
+    self.cfg = load_config_from_json(config_path)
+
+    self.settings_window = SettingsWindow(self.cfg)
     self.main_window = QMainWindow()
-    self.current_state = PokerGameState(self.settings_window.cfg)
+    self.current_state = PokerGameState(self.cfg)
 
     # Time counters
     self.sec_cnt = 0
@@ -53,12 +58,14 @@ class PokerTimer():
     self.qfontdb = setupQFontDataBase()
     #QTWidgets
     # Timer
+    self.update_timer = QTimer(self.main_layout)
+    self.update_timer.start(100)
     self.round_timer = QTimer(self.main_layout)
     self.total_timer = QTimer(self.main_layout)
     self.total_timer.start(1000) # each second update
     self.break_timer = QTimer(self.main_layout)
 
-    self.mv_display = MainWindowDisplay(self.central_widget)
+    self.mv_display = MainWindowDisplay(self.central_widget, self.current_state)
     self.mv_controls = MainWindowControls(self.central_widget)
 
     self.check = QRadioButton(self.central_widget)
@@ -82,11 +89,9 @@ class PokerTimer():
     self.mv_controls.connect_clicks(mv_control_clicks)
 
     self.round_timer.timeout.connect(self.update_stats_every_sec)
+    self.update_timer.timeout.connect(self.update_mv_display_texts)
     self.total_timer.timeout.connect(self.update_total_time)
     self.break_timer.timeout.connect(self.update_break_time)
-
-    self.settings_window.buttons["apply"].clicked.connect(self.sw_apply_config)
-    self.settings_window.buttons["apply_and_close"].clicked.connect(self.sw_apply_config_and_close)
 
     # Initialize texts
     self.update_mv_display_texts()
@@ -119,17 +124,9 @@ class PokerTimer():
                                                 "}")
 
   def update_mv_display_texts(self):
-    self.mv_display.update_texts(self.sec_cnt, self.current_state)
-
-  # Settings Window
-  def sw_apply_config(self):
-    self.current_state.update_config(self.settings_window.cfg)
-    self.update_mv_display_texts()
-
-  def sw_apply_config_and_close(self):
-    self.current_state.update_config(self.settings_window.cfg)
-    self.settings_window.close()
-    self.update_mv_display_texts()
+    if self.current_state.current_level >= len(self.cfg.BIG_BLIND_VALUES):
+      self.current_state.current_level = len(self.cfg.BIG_BLIND_VALUES)-1
+    self.mv_display.update_texts(self.sec_cnt)
 
   def showSettingsWindow(self):
     self.settings_window.show()
@@ -155,7 +152,6 @@ class PokerTimer():
     if self.sec_cnt >= 1000: # count to a second
       self.sec_cnt = 0
       self.current_state.counter_increment()
-    self.update_mv_display_texts()
 
   def start_stop_round_timer(self):
     if self.round_timer.isActive():
