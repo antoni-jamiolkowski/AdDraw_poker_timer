@@ -10,7 +10,6 @@ from PyQt5.QtGui import QFont, QFontDatabase, QMouseEvent
 from PyQt5.QtWidgets import (QGridLayout, QHBoxLayout, QLabel, QMessageBox,
                              QPushButton, QSizePolicy, QWidget)
 
-
 @unique
 class WindowGeometry(Enum):
   UHD = QSize(3840, 2160)
@@ -76,6 +75,9 @@ class PokerGameState:
                config: PokerConfig
                ):
     self.current_level = 1
+    from pygame import mixer
+    mixer.init()
+    self.beep = mixer.Sound("noises/box1.wav")
     self.update_config(config)
 
   def update_config(self, config: PokerConfig, update_counters: bool = True):
@@ -105,7 +107,7 @@ class PokerGameState:
   def counter_increment(self):
     if self.minute == 0 and self.second == 0:
       self.current_level += 1
-      self.reset_timer()
+      self.reset_timer(silent=False)
       return
     if self.second == 0:
       self.minute -= 1
@@ -127,7 +129,9 @@ class PokerGameState:
     self.current_level = 1
     self.reset_timer()
 
-  def reset_timer(self):
+  def reset_timer(self, silent=True):
+    if not silent:
+      self.beep.play(1)
     self.minute, self.second = self.config.LEVEL_PERIOD._list()
 
 def setupQFontDataBase():
