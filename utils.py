@@ -131,7 +131,7 @@ class PokerGameState:
 
   def reset_timer(self, silent=True):
     if not silent:
-      self.beep.play(1)
+      self.beep.play(maxtime=1500) # crop the sound to a box ring
     self.minute, self.second = self.config.LEVEL_PERIOD._list()
 
 def setupQFontDataBase():
