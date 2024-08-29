@@ -64,6 +64,7 @@ class PokerConfig:
   CHIP_INCREMENT : int = -1 # Smallest difference between chips
   BIG_BLIND_VALUES : any = -1 # BB Values for every level of the game
   LEVEL_PERIOD : MyTime = MyTime(-1,-1)
+  NEW : bool = False
 
 Family =  MonospacedFontFamilies.MONOFONTO.value
 Family2 = MonospacedFontFamilies.MONOFONTO.value
@@ -89,6 +90,10 @@ class PokerGameState:
       self.reset_timer()
 
   def get_state(self):
+    if self.config.NEW:
+      self.config.NEW = False
+      self.reset_level()
+
     cur_bb = self.config.BIG_BLIND_VALUES[self.current_level-1]
     cur_sb = int(cur_bb / 2)
     if cur_sb % self.config.CHIP_INCREMENT != 0:
@@ -176,6 +181,7 @@ def load_config_from_json(path: Path) -> PokerConfig | bool:
     return False
   with open(path, "r") as f:
     config = json.load(f)
+    config["NEW"] = True
   return dict_to_config(config)
 
 
