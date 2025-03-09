@@ -21,7 +21,7 @@ class PokerTimer():
                time_step_ms : int = 10,
                config_path: Optional[Path] = None
                ):
-    config_path = Path("configs/t10000.json") if config_path is None else config_path
+    config_path = Path("configs/my_config.json") if config_path is None else config_path
     if not config_path.exists():
       raise ValueError(f"Config file {config_path.absolute()} does not exist!")
 

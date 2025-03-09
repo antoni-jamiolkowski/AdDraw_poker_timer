@@ -40,7 +40,7 @@ class SettingsWindow(QWidget):
     tablewidget.setStyleSheet("text-align: center; color: black")
     for id, x in enumerate(val):
       tablewidget.setItem(id, 0,  QTableWidgetItem(str(self.cfg.BIG_BLIND_VALUES[id])))
-      tablewidget.setItem(id, 1,  QTableWidgetItem(f"{self.cfg.LEVEL_PERIOD.m}:{self.cfg.LEVEL_PERIOD.s}"))
+      tablewidget.setItem(id, 1,  QTableWidgetItem(f"{self.cfg.LEVEL_PERIOD[id].m}:{self.cfg.LEVEL_PERIOD[id].s}"))
 
     tablewidget.horizontalHeader().setStretchLastSection(True)
     tablewidget.horizontalHeader().setSectionResizeMode(

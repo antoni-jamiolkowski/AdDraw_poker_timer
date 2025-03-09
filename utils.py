@@ -1,5 +1,5 @@
 import json
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from enum import Enum, unique
 from pathlib import Path
 
@@ -63,7 +63,7 @@ class PokerConfig:
   STARTING_CHIP_AMOUNT: int = -1
   CHIP_INCREMENT : int = -1 # Smallest difference between chips
   BIG_BLIND_VALUES : any = -1 # BB Values for every level of the game
-  LEVEL_PERIOD : MyTime = MyTime(-1,-1)
+  LEVEL_PERIOD : list[MyTime] = field(default_factory=lambda: [MyTime(-1,-1)])
   NEW : bool = False
 
 Family =  MonospacedFontFamilies.MONOFONTO.value
@@ -83,8 +83,9 @@ class PokerGameState:
 
   def update_config(self, config: PokerConfig, update_counters: bool = True):
     self.config = config
-    assert(isinstance(config.LEVEL_PERIOD, MyTime))
+    assert(isinstance(config.LEVEL_PERIOD, list))
     assert(isinstance(config.BIG_BLIND_VALUES, list))
+    assert len(config.LEVEL_PERIOD) == len(config.BIG_BLIND_VALUES), "Big blinds list and level time list are not the same length!"
 
     if update_counters:
       self.reset_timer()
@@ -136,8 +137,8 @@ class PokerGameState:
 
   def reset_timer(self, silent=True):
     if not silent:
-      self.beep.play(maxtime=1500) # crop the sound to a box ring
-    self.minute, self.second = self.config.LEVEL_PERIOD._list()
+      self.beep.play(loops=2) # crop the sound to a box ring
+    self.minute, self.second = self.config.LEVEL_PERIOD[self.current_level - 1]._list()
 
 def setupQFontDataBase():
   qfont_db = QFontDatabase()
@@ -175,7 +176,7 @@ def get_fixed_size_policy(): #DUNNO IF THIS WORKS
 
 def load_config_from_json(path: Path) -> PokerConfig | bool:
   def dict_to_config(_dict: dict):
-    _dict["LEVEL_PERIOD"] = MyTime(*_dict["LEVEL_PERIOD"])
+    _dict["LEVEL_PERIOD"] = [MyTime(*el) for el in _dict["LEVEL_PERIOD"]]
     return PokerConfig(**_dict)
   if not path.exists() or path.is_dir():
     return False
